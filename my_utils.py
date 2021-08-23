@@ -41,6 +41,7 @@ def _extract_from_lines(file_pt, first_line, exp_data):
 def extract_from_exp_data(dir_path):
     exp_data_normal = [{op: [] for op in genotypes.PRIMITIVES} for _ in range(14)]
     exp_data_reduce = [{op: [] for op in genotypes.PRIMITIVES} for _ in range(14)]
+    train_acc = []
     file_pt = open(dir_path + '/log.txt', 'r')
     while True:
         line = file_pt.readline()
@@ -53,8 +54,12 @@ def extract_from_exp_data(dir_path):
                 _extract_from_lines(file_pt, line, exp_data_reduce)
             else:
                 raise RuntimeError('Unexpected line')
+        elif 'train_acc' in line:
+            splitted = line.split()
+            accuracy = float(splitted[splitted.index('train_acc') + 1])
+            train_acc.append(accuracy)
     file_pt.close()
-    return exp_data_normal, exp_data_reduce
+    return exp_data_normal, exp_data_reduce, train_acc
 
 
 def _check_if_succeeded(lines):
