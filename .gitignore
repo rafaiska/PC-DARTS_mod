@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+#PaiCharme
+.idea
+
+#Dados dos experimentos
+data/
