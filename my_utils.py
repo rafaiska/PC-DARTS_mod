@@ -76,10 +76,12 @@ def _extract_exp_info(dir):
 
 def list_experiment_status(search_exp_dir):
     output = open('exp_results.csv', 'w')
+    output.write(','.join(['ID', 'Successful?', 'Epochs']) + '\n')
     for dir_name in sorted(os.listdir(search_exp_dir)):
         if 'search-EXP-' in dir_name:
             epochs, succeeded = _extract_exp_info('/'.join([search_exp_dir, dir_name]))
             output.write(','.join([dir_name, 'T' if succeeded else 'F', str(epochs)]) + '\n')
+    output.close()
 
 
 def update_checkpoint(exp_dir, current_epoch):
