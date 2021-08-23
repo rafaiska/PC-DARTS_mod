@@ -1,7 +1,10 @@
 import ast
 import os
 
+import torch
+
 import genotypes
+import model_search
 from utils import load
 
 SUCCEEDED_EXP_STR = 'valid_acc'
@@ -113,3 +116,10 @@ def print_cell_edges_from_alphas(alphas):
         op_name = genotypes.PRIMITIVES[max_index]
         print('Edge {}: {}'.format(i, op_name))
         i += 1
+
+
+def print_genotype_from_exp_dir(exp_dir):
+    model = model_search.Network(16, 10, 8, torch.nn.CrossEntropyLoss())
+    model_path = '{}/weights.pt'.format(exp_dir)
+    load(model, model_path)
+    print(model.genotype())
