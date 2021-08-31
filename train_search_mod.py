@@ -12,6 +12,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils
 import torchvision.datasets as dset
+from torch.autograd import Variable
 
 import my_utils
 import utils
@@ -24,7 +25,7 @@ parser.add_argument('--data', type=str, default='../data', help='location of the
 parser.add_argument('--set', type=str, default='cifar10', help='location of the data corpus')
 parser.add_argument('--batch_size', type=int, default=256, help='batch size')
 parser.add_argument('--learning_rate', type=float, default=0.1, help='init learning rate')
-parser.add_argument('--learning_rate_min', type=float, default=0.001, help='min learning rate')
+parser.add_argument('--learning_rate_min', type=float, default=0.0, help='min learning rate')
 parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
 parser.add_argument('--weight_decay', type=float, default=3e-4, help='weight decay')
 parser.add_argument('--report_freq', type=float, default=50, help='report frequency')
@@ -89,9 +90,6 @@ def main():
     criterion = criterion.cuda()
     model = Network(args.init_channels, CIFAR_CLASSES, args.layers, arch_criterion if arch_criterion else criterion)
     model = model.cuda()
-    if args.resume_checkpoint:
-        logging.info('Loading checkpoint {}...'.format(args.save))
-        my_utils.load_checkpoint_model(model, args.save)
     logging.info("param size = %fMB", utils.count_parameters_in_MB(model))
 
     optimizer = torch.optim.SGD(
@@ -125,21 +123,20 @@ def main():
 
     architect = Architect(model, args)
 
-    scheduler.step()
-    starting_epoch = 0 if not checkpoint_epoch else checkpoint_epoch
-    logging.info('Starting EXP from epoch {}'.format(starting_epoch))
-    for epoch in range(starting_epoch, args.epochs):
+    for epoch in range(args.epochs):
         scheduler.step()
         lr = scheduler.get_lr()[0]
         logging.info('epoch %d lr %e', epoch, lr)
 
-        print(F.softmax(model.alphas_normal, dim=-1))
-        print(F.softmax(model.alphas_reduce, dim=-1))
-        print(F.softmax(model.betas_normal[2:5], dim=-1))
-        # model.drop_path_prob = args.drop_path_prob * epoch / args.epochs
+        genotype = model.genotype()
+
+        # print(F.softmax(model.alphas_normal, dim=-1))
+        # print(F.softmax(model.alphas_reduce, dim=-1))
+
         # training
         train_acc, train_obj = train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, epoch,
                                      arch_criterion)
+        logging.info('train_acc %f', train_acc)
         logging.info('ALPHAS NORMAL: {}'.format(F.softmax(model.alphas_normal, dim=-1)))
         logging.info('ALPHAS REDUCE: {}'.format(F.softmax(model.alphas_normal, dim=-1)))
         logging.info('TRAIN ACC: {}'.format(train_acc))
@@ -150,7 +147,6 @@ def main():
             logging.info('valid_acc %f', valid_acc)
 
         utils.save(model, os.path.join(args.save, 'weights.pt'))
-        genotype = model.genotype()
         logging.info('genotype = %s', genotype)
 
 
@@ -165,18 +161,18 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, 
                 torch.cat((model.alphas_normal, model.alphas_reduce), dim=0))
         model.train()
         n = input.size(0)
-        input = input.cuda()
-        target = target.cuda(non_blocking=True)
+        input = Variable(input, requires_grad=False).cuda()
+        target = Variable(target, requires_grad=False).cuda(async=True)
 
         # get a random minibatch from the search queue with replacement
-        # input_search, target_search = next(iter(valid_queue))
-        try:
-            input_search, target_search = next(valid_queue_iter)
-        except:
-            valid_queue_iter = iter(valid_queue)
-            input_search, target_search = next(valid_queue_iter)
-        input_search = input_search.cuda()
-        target_search = target_search.cuda(non_blocking=True)
+        input_search, target_search = next(iter(valid_queue))
+        # try:
+        #  input_search, target_search = next(valid_queue_iter)
+        # except:
+        #  valid_queue_iter = iter(valid_queue)
+        #  input_search, target_search = next(valid_queue_iter)
+        input_search = Variable(input_search, requires_grad=False).cuda()
+        target_search = Variable(target_search, requires_grad=False).cuda(async=True)
 
         if epoch >= 15:
             architect.step(input, target, input_search, target_search, lr, optimizer, unrolled=args.unrolled)
@@ -190,9 +186,9 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, 
         optimizer.step()
 
         prec1, prec5 = utils.accuracy(logits, target, topk=(1, 5))
-        objs.update(loss.data.item(), n)
-        top1.update(prec1.data.item(), n)
-        top5.update(prec5.data.item(), n)
+        objs.update(loss.data[0], n)
+        top1.update(prec1.data[0], n)
+        top5.update(prec5.data[0], n)
 
         if step % args.report_freq == 0:
             logging.info('train %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
@@ -206,21 +202,22 @@ def infer(valid_queue, model, criterion):
     top5 = utils.AvgrageMeter()
     model.eval()
 
-    with torch.no_grad():
-        for step, (input, target) in enumerate(valid_queue):
-            input = input.cuda()
-            target = target.cuda(non_blocking=True)
-            logits = model(input)
-            loss = criterion(logits, target)
+    for step, (input, target) in enumerate(valid_queue):
+        # input = input.cuda()
+        # target = target.cuda(non_blocking=True)
+        input = Variable(input, volatile=True).cuda()
+        target = Variable(target, volatile=True).cuda(async=True)
+        logits = model(input)
+        loss = criterion(logits, target)
 
-            prec1, prec5 = utils.accuracy(logits, target, topk=(1, 5))
-            n = input.size(0)
-            objs.update(loss.data.item(), n)
-            top1.update(prec1.data.item(), n)
-            top5.update(prec5.data.item(), n)
+        prec1, prec5 = utils.accuracy(logits, target, topk=(1, 5))
+        n = input.size(0)
+        objs.update(loss.data[0], n)
+        top1.update(prec1.data[0], n)
+        top5.update(prec5.data[0], n)
 
-            if step % args.report_freq == 0:
-                logging.info('valid %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
+        if step % args.report_freq == 0:
+            logging.info('valid %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
 
     return top1.avg, objs.avg
 
