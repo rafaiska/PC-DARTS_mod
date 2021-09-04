@@ -11,12 +11,23 @@ SUCCEEDED_EXP_STR = 'valid_acc'
 CHECKPOINT_FILE = 'checkpoint.info'
 
 
-def _parse_list_in_line(line):
+def _parse_list_in_line_p3(line):
     first_bracket_pos = -1
     for _ in range(line.count('[')):
         first_bracket_pos = line.find('[', first_bracket_pos + 1)
     parsed_str = line[first_bracket_pos:line.find(']') + 1]
     return ast.literal_eval(parsed_str)
+
+
+def _parse_list_in_line_p2(line):
+    return [float(w) for w in line.split()]
+
+
+def _parse_list_in_line(line, python2_line_style):
+    if python2_line_style:
+        return _parse_list_in_line_p2(line)
+    else:
+        return _parse_list_in_line_p3(line)
 
 
 def _add_to_exp_data(current_list, exp_data, node_index):
@@ -25,16 +36,20 @@ def _add_to_exp_data(current_list, exp_data, node_index):
         node_data[genotypes.PRIMITIVES[i]].append(current_list[i])
 
 
-def _extract_from_lines(file_pt, first_line, exp_data):
-    current_list = _parse_list_in_line(first_line)
-    _add_to_exp_data(current_list, exp_data, 0)
-    node_index = 1
+def _extract_from_lines(file_pt, first_line, exp_data, python2_line_style):
+    node_index = 0
+    if not python2_line_style:
+        current_list = _parse_list_in_line(first_line, python2_line_style)
+        _add_to_exp_data(current_list, exp_data, 0)
+        node_index += 1
     while True:
         current_line = file_pt.readline()
-        current_list = _parse_list_in_line(current_line)
+        if python2_line_style and 'torch.cuda.FloatTensor' in current_line:
+            break
+        current_list = _parse_list_in_line(current_line, python2_line_style)
         _add_to_exp_data(current_list, exp_data, node_index)
         node_index += 1
-        if current_line.count(']') >= 2:
+        if not python2_line_style and current_line.count(']') >= 2:
             break
 
 
@@ -48,15 +63,16 @@ def extract_from_exp_data(dir_path):
         if not line:
             break
         if 'ALPHA' in line:
+            python2_line_style = 'Variable containing:' in line
             if 'NORMAL' in line:
-                _extract_from_lines(file_pt, line, exp_data_normal)
+                _extract_from_lines(file_pt, line, exp_data_normal, python2_line_style)
             elif 'REDUCE' in line:
-                _extract_from_lines(file_pt, line, exp_data_reduce)
+                _extract_from_lines(file_pt, line, exp_data_reduce, python2_line_style)
             else:
                 raise RuntimeError('Unexpected line')
-        elif 'train_acc' in line:
+        elif 'TRAIN ACC:' in line:
             splitted = line.split()
-            accuracy = float(splitted[splitted.index('train_acc') + 1])
+            accuracy = float(splitted[splitted.index('ACC:') + 1])
             train_acc.append(accuracy)
     file_pt.close()
     return exp_data_normal, exp_data_reduce, train_acc
