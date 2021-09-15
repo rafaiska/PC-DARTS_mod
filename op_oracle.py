@@ -15,11 +15,11 @@ class OpPerformanceOracle:
 
     def set_default_weights(self):
         self.reset_weights()
-        self.set_weight('none', 1)
+        self.set_weight('none', 2)
         self.set_weight('max_pool_3x3', 2)
         self.set_weight('avg_pool_3x3', 2)
         self.set_weight('skip_connect', 2)
-        self.set_weight('sep_conv_3x3', 2)
+        self.set_weight('sep_conv_3x3', 1)
         self.set_weight('sep_conv_5x5', 2)
         self.set_weight('dil_conv_3x3', 2)
         self.set_weight('dil_conv_5x5', 2)
