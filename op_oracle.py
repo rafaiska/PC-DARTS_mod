@@ -1,7 +1,10 @@
 import torch.nn.functional as F
+import logging
 from torch import nn
 
 from genotypes import PRIMITIVES
+
+OPERATION_LOSS_W = 100.0
 
 
 class OpPerformanceOracle:
@@ -57,6 +60,8 @@ class CustomLoss(nn.CrossEntropyLoss):
         self.current_network_cells_alphas = network_cells_alphas
 
     def forward(self, input, target):
-        a = super(CustomLoss, self).forward(input, target)
+        cross_entropy_loss = super(CustomLoss, self).forward(input, target)
         op_rate = self.oracle.get_operation_rate(self.current_network_cells_alphas) if self.oracle else 1.0
-        return a + 1.0 * op_rate
+        op_loss = op_rate * OPERATION_LOSS_W
+        logging.info('LOSS = {} + {}'.format(cross_entropy_loss.data[0], op_loss.data[0]))
+        return cross_entropy_loss + op_loss
