@@ -1,15 +1,17 @@
+import torch
 import torch.nn.functional as F
 import logging
 from torch import nn
 
 from genotypes import PRIMITIVES
 
-OPERATION_LOSS_W = 100.0
+OPERATION_LOSS_W = 1.0
 
 
 class OpPerformanceOracle:
     def __init__(self):
         self.weights = {}
+        self.softmaxed_weights = None
 
     def reset_weights(self):
         self.weights.clear()
@@ -26,6 +28,7 @@ class OpPerformanceOracle:
         self.set_weight('sep_conv_5x5', 2)
         self.set_weight('dil_conv_3x3', 2)
         self.set_weight('dil_conv_5x5', 2)
+        self._compute_softmaxed_weights()
 
     def set_weight(self, operation, weight):
         self.weights[operation] = weight
@@ -49,6 +52,24 @@ class OpPerformanceOracle:
                 weighted_alphas.append(self.weights[PRIMITIVES[i]] * a_softmax[i])
         return sum(weighted_alphas) / (total_weight * len(network_cells_alphas))
 
+    def get_operation_rate_v2(self, network_cells_alphas):
+        softmaxes_diff = []
+        if not self._weights_are_valid():
+            raise RuntimeError('Undefined weights')
+        for alpha in network_cells_alphas:
+            if len(self.weights) != len(alpha):
+                raise RuntimeError('Incorrect dimension for Alpha')
+            a_softmax = F.softmax(alpha)
+            softmaxes_diff.append(torch.sum(torch.abs(a_softmax - self.softmaxed_weights)))
+        return sum(softmaxes_diff) / len(network_cells_alphas)
+
+    def _compute_softmaxed_weights(self):
+        weight_array = []
+        for op in PRIMITIVES:
+            weight_array.append(self.weights[op])
+        weight_tensor = torch.FloatTensor(weight_array)
+        self.softmaxed_weights = F.softmax(weight_tensor)
+
 
 class CustomLoss(nn.CrossEntropyLoss):
     def __init__(self, weight=None, size_average=True, ignore_index=-100, reduce=True, current_alpha=None, oracle=None):
@@ -61,7 +82,7 @@ class CustomLoss(nn.CrossEntropyLoss):
 
     def forward(self, input, target):
         cross_entropy_loss = super(CustomLoss, self).forward(input, target)
-        op_rate = self.oracle.get_operation_rate(self.current_network_cells_alphas) if self.oracle else 1.0
+        op_rate = self.oracle.get_operation_rate_v2(self.current_network_cells_alphas) if self.oracle else 0.0
         op_loss = op_rate * OPERATION_LOSS_W
         logging.info('LOSS = {} + {}'.format(cross_entropy_loss.data[0], op_loss.data[0]))
         return cross_entropy_loss + op_loss
