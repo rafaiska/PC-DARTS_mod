@@ -67,8 +67,8 @@ class OpPerformanceOracle:
         weight_array = []
         for op in PRIMITIVES:
             weight_array.append(self.weights[op])
-        weight_tensor = torch.FloatTensor(weight_array)
-        self.softmaxed_weights = F.softmax(weight_tensor)
+        weight_tensor = torch.cuda.FloatTensor(weight_array)
+        self.softmaxed_weights = F.softmax(torch.autograd.Variable(weight_tensor), dim=0)
 
 
 class CustomLoss(nn.CrossEntropyLoss):
