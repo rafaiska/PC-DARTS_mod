@@ -47,7 +47,7 @@ class OpPerformanceOracle:
         for alpha in network_cells_alphas:
             if len(self.weights) != len(alpha):
                 raise RuntimeError('Incorrect dimension for Alpha')
-            a_softmax = F.softmax(alpha)
+            a_softmax = F.softmax(alpha, dim=0)
             for i in range(alpha.dim()):
                 weighted_alphas.append(self.weights[PRIMITIVES[i]] * a_softmax[i])
         return sum(weighted_alphas) / (total_weight * len(network_cells_alphas))
@@ -59,7 +59,7 @@ class OpPerformanceOracle:
         for alpha in network_cells_alphas:
             if len(self.weights) != len(alpha):
                 raise RuntimeError('Incorrect dimension for Alpha')
-            a_softmax = F.softmax(alpha)
+            a_softmax = F.softmax(alpha, dim=0)
             softmaxes_diff.append(torch.sum(torch.abs(a_softmax - self.softmaxed_weights)))
         return sum(softmaxes_diff) / len(network_cells_alphas)
 
