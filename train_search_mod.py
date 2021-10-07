@@ -85,7 +85,7 @@ def main():
     if args.custom_loss:
         oracle = OpPerformanceOracle()
         oracle.set_default_weights()
-        oracle.setup_counter(32, 32, args.layers, args.init_channels)
+        oracle.setup_counter(32, 32, 20, 36)
         arch_criterion = CustomLoss(oracle=oracle)
     criterion = nn.CrossEntropyLoss()
     criterion = criterion.cuda()
@@ -129,8 +129,6 @@ def main():
         lr = scheduler.get_lr()[0]
         logging.info('epoch %d lr %e', epoch, lr)
 
-        genotype = model.genotype()
-
         # print(F.softmax(model.alphas_normal, dim=-1))
         # print(F.softmax(model.alphas_reduce, dim=-1))
 
@@ -148,6 +146,7 @@ def main():
             logging.info('valid_acc %f', valid_acc)
 
         utils.save(model, os.path.join(args.save, 'weights.pt'))
+        genotype = model.genotype()
         logging.info('genotype = %s', genotype)
 
 

@@ -122,9 +122,6 @@ def main():
         lr = scheduler.get_lr()[0]
         logging.info('epoch %d lr %e', epoch, lr)
 
-        genotype = model.genotype()
-        logging.info('genotype = %s', genotype)
-
         print(F.softmax(model.alphas_normal, dim=-1))
         print(F.softmax(model.alphas_reduce, dim=-1))
         print(F.softmax(model.betas_normal[2:5], dim=-1))
@@ -140,6 +137,8 @@ def main():
             logging.info('valid_acc %f', valid_acc)
 
         utils.save(model, os.path.join(args.save, 'weights.pt'))
+        genotype = model.genotype()
+        logging.info('genotype = %s', genotype)
 
 
 def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, epoch, arch_criterion):
