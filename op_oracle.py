@@ -1,14 +1,14 @@
 import logging
+import sys
 
-import numpy
 import torch
 import torch.nn.functional as F
 from torch import nn
 
 from genotypes import PRIMITIVES
 
-OPERATION_LOSS_W = 1.0
-PYTHON_3 = True
+OPERATION_LOSS_W = 2.0
+PYTHON_3 = sys.version[0] == '3'
 
 
 class FPOpCounter:
@@ -20,10 +20,11 @@ class FPOpCounter:
     def __init__(self):
         self.layers = None
         self.genotype = None
-        self.fp_op_history = None
+        self.min_fp_op = None
+        self.max_fp_op = None
+        self.last_fp_op = None
 
     def setup(self, input_width, input_height, n_layers, init_channels):
-        self.fp_op_history = []
         self.layers = []
         c_curr, c_prev = init_channels, init_channels
         input_s_curr = input_s_prev = (input_width, input_height)
@@ -127,7 +128,10 @@ class FPOpCounter:
 
     def update_genotype_from_network(self, network):
         self.genotype = network.genotype()
-        self.fp_op_history.append(self.count_network_fp_ops())
+        fp_ops = self.count_network_fp_ops()
+        self.min_fp_op = fp_ops if self.min_fp_op is None or fp_ops < self.min_fp_op else self.min_fp_op
+        self.max_fp_op = fp_ops if self.max_fp_op is None or fp_ops > self.max_fp_op else self.max_fp_op
+        self.last_fp_op = fp_ops
 
     @staticmethod
     def _count_layer_op_fp_ops(op, src_node, reduce, input_c, output_c, input_s, output_s):
@@ -155,9 +159,12 @@ class FPOpCounter:
         return counter
 
     def get_current_fp_op_rate(self):
-        mean = numpy.mean(self.fp_op_history)
-        variance = numpy.var(self.fp_op_history)
-        return (self.fp_op_history[-1] - mean) / variance if variance != 0 else 0
+        """
+        https://en.wikipedia.org/wiki/Feature_scaling#Rescaling_(min-max_normalization)
+        """
+        numerator = self.last_fp_op - self.min_fp_op
+        denominator = self.max_fp_op - self.min_fp_op
+        return numerator / denominator if denominator != 0 else 0
 
 
 class OpPerformanceOracle:
@@ -223,7 +230,7 @@ class OpPerformanceOracle:
         return sum(softmaxes_diff) / len(network_cells_alphas)
 
     def get_operation_rate_v3(self, network_cells_alphas):
-        return self.fp_op_counter.get_current_fp_op_rate()
+        return torch.cuda.FloatTensor([self.fp_op_counter.get_current_fp_op_rate()])
 
     def _compute_softmaxed_weights(self):
         weight_array = []
@@ -249,7 +256,7 @@ class CustomLoss(nn.CrossEntropyLoss):
         op_rate = self.oracle.get_operation_rate_v3(self.current_network_cells_alphas) if self.oracle else 0.0
         op_loss = op_rate * OPERATION_LOSS_W
         if PYTHON_3:
-            logging.info('LOSS = {} + {}'.format(cross_entropy_loss, op_loss))
+            logging.info('LOSS = {} + {}'.format(cross_entropy_loss.data.item(), op_loss.data.item()))
         else:
             logging.info('LOSS = {} + {}'.format(cross_entropy_loss.data[0], op_loss.data[0]))
         return cross_entropy_loss + op_loss
