@@ -1,17 +1,176 @@
+import logging
+
+import numpy
 import torch
 import torch.nn.functional as F
-import logging
 from torch import nn
 
 from genotypes import PRIMITIVES
 
 OPERATION_LOSS_W = 1.0
+PYTHON_3 = True
+
+
+class FPOpCounter:
+    """
+    Based on https://github.com/clavichord93/CNN-Calculator
+    https://arxiv.org/abs/1811.03060
+    """
+
+    def __init__(self):
+        self.layers = None
+        self.genotype = None
+        self.fp_op_history = None
+
+    def setup(self, input_width, input_height, n_layers, init_channels):
+        self.fp_op_history = []
+        self.layers = []
+        c_curr, c_prev = init_channels, init_channels
+        input_s_curr = input_s_prev = (input_width, input_height)
+        for i in range(n_layers):
+            if i in [n_layers // 3, 2 * n_layers // 3]:
+                c_curr *= 2
+                input_s_curr = tuple(int(x/2) for x in input_s_curr)
+            cell = (c_prev, c_curr, input_s_prev, input_s_curr)
+            c_prev = c_curr
+            input_s_prev = input_s_curr
+            self.layers.append(cell)
+
+
+    @staticmethod
+    def conv2d(w_in, h_in, c_in, c_out, kernel_size, stride, padding, dilation, groups, bias):
+        eff_ks = kernel_size + (kernel_size - 1) * (dilation - 1)
+        out_h = (h_in - eff_ks + 2 * padding) // stride + 1
+        out_w = (w_in - eff_ks + 2 * padding) // stride + 1
+
+        # fp_ops = (c_out * c_in // groups * kernel_size * kernel_size + 1) * out_h * out_w
+        fp_ops = (c_in // groups * kernel_size * kernel_size + 1) * out_h * out_w
+        if bias:
+            fp_ops += c_out * out_w * out_h
+
+        return fp_ops
+
+    @staticmethod
+    def pool2d(w_in, h_in, c, kernel_size, stride, padding):
+        out_h = (h_in - kernel_size + 2 * padding) // stride + 1
+        out_w = (w_in - kernel_size + 2 * padding) // stride + 1
+        return c * out_h * out_w * kernel_size * kernel_size
+
+    @staticmethod
+    def _identity():
+        return 0
+
+    @staticmethod
+    def _batch_norm():
+        return 0
+
+    @staticmethod
+    def none():
+        return 0
+
+    @staticmethod
+    def avg_pool_3x3(w_in, h_in, c, stride):
+        return FPOpCounter.pool2d(w_in, h_in, c, 3, stride, 1)
+
+    @staticmethod
+    def max_pool_3x3(w_in, h_in, c, stride):
+        return FPOpCounter.pool2d(w_in, h_in, c, 3, stride, 1)
+
+    @staticmethod
+    def _factorized_reduce(w_in, h_in, c):
+        ops = [FPOpCounter.conv2d(w_in, h_in, c, c // 2, 1, 2, 0, 1, 1, False),
+               FPOpCounter.conv2d(w_in, h_in, c, c // 2, 1, 2, 0, 1, 1, False),
+               FPOpCounter._batch_norm()]
+        return sum(ops)
+
+    @staticmethod
+    def skip_connect(w_in, h_in, c, stride):
+        return FPOpCounter._identity() if stride == 1 else FPOpCounter._factorized_reduce(w_in, h_in, c)
+
+    @staticmethod
+    def _sep_conv(w_in, h_in, c, kernel_size, stride, padding):
+        ops = [FPOpCounter.conv2d(w_in, h_in, c, c, kernel_size, stride, padding, 1, c, False),
+               FPOpCounter.conv2d(w_in, h_in, c, c, 1, 1, 0, 1, 1, False),
+               FPOpCounter._batch_norm(),
+               FPOpCounter.conv2d(w_in, h_in, c, c, kernel_size, 1, padding, 1, c, False),
+               FPOpCounter.conv2d(w_in, h_in, c, c, 1, 1, 0, 1, 1, False),
+               FPOpCounter._batch_norm(),
+               ]
+        return sum(ops)
+
+    @staticmethod
+    def sep_conv_3x3(w_in, h_in, c, stride):
+        return FPOpCounter._sep_conv(w_in, h_in, c, 3, stride, 1)
+
+    @staticmethod
+    def sep_conv_5x5(w_in, h_in, c, stride):
+        return FPOpCounter._sep_conv(w_in, h_in, c, 5, stride, 2)
+
+    @staticmethod
+    def sep_conv_7x7(w_in, h_in, c, stride):
+        return FPOpCounter._sep_conv(w_in, h_in, c, 7, stride, 3)
+
+    @staticmethod
+    def _dil_conv(w_in, h_in, c, kernel_size, stride, padding):
+        ops = [FPOpCounter.conv2d(w_in, h_in, c, c, kernel_size, stride, padding, 2, c, False),
+               FPOpCounter.conv2d(w_in, h_in, c, c, 1, stride, 0, 1, 1, False),
+               FPOpCounter._batch_norm()]
+        return sum(ops)
+
+    @staticmethod
+    def dil_conv_3x3(w_in, h_in, c, stride):
+        return FPOpCounter._dil_conv(w_in, h_in, c, 3, stride, 2)
+
+    @staticmethod
+    def dil_conv_5x5(w_in, h_in, c, stride):
+        return FPOpCounter._dil_conv(w_in, h_in, c, 5, stride, 4)
+
+    def update_genotype_from_network(self, network):
+        self.genotype = network.genotype()
+        self.fp_op_history.append(self.count_network_fp_ops())
+
+    @staticmethod
+    def _count_layer_op_fp_ops(op, src_node, reduce, input_c, output_c, input_s, output_s):
+        op_counter = eval('FPOpCounter.{}'.format(op))
+        stride = 2 if src_node < 2 and reduce else 1
+        w_in, h_in = input_s if src_node < 2 else output_s
+        c = input_c if src_node < 2 else output_c
+        return op_counter(w_in, h_in, c, stride)
+
+    def _count_layer_fp_ops(self, layer):
+        fp_ops = 0
+        input_c, output_c, input_s, output_s = layer
+        reduce = input_c != output_c
+        sub_geno = self.genotype[2] if reduce else self.genotype[0]
+        for dst_node in range(2, 6):
+            for i in range(2):
+                op, src_node = sub_geno[(dst_node - 2) * 2 + i]
+                fp_ops += FPOpCounter._count_layer_op_fp_ops(op, src_node, reduce, input_c, output_c, input_s, output_s)
+        return fp_ops
+
+    def count_network_fp_ops(self):
+        counter = 0
+        for layer in self.layers:
+            counter += self._count_layer_fp_ops(layer)
+        return counter
+
+    def get_current_fp_op_rate(self):
+        mean = numpy.mean(self.fp_op_history)
+        variance = numpy.var(self.fp_op_history)
+        return (self.fp_op_history[-1] - mean) / variance if variance != 0 else 0
 
 
 class OpPerformanceOracle:
     def __init__(self):
         self.weights = {}
         self.softmaxed_weights = None
+        self.fp_op_counter = FPOpCounter()
+
+    def setup_counter(self, input_w, input_h, n_layers, init_channels):
+        self.fp_op_counter.setup(input_w, input_h, n_layers, init_channels)
+
+    def update_genotype_from_network(self, network):
+        self.fp_op_counter.update_genotype_from_network(network)
 
     def reset_weights(self):
         self.weights.clear()
@@ -63,6 +222,9 @@ class OpPerformanceOracle:
             softmaxes_diff.append(torch.sum(torch.abs(a_softmax - self.softmaxed_weights)))
         return sum(softmaxes_diff) / len(network_cells_alphas)
 
+    def get_operation_rate_v3(self, network_cells_alphas):
+        return self.fp_op_counter.get_current_fp_op_rate()
+
     def _compute_softmaxed_weights(self):
         weight_array = []
         for op in PRIMITIVES:
@@ -77,12 +239,17 @@ class CustomLoss(nn.CrossEntropyLoss):
         self.current_network_cells_alphas = current_alpha
         self.oracle = oracle
 
-    def update_current_network_cells_alphas(self, network_cells_alphas):
-        self.current_network_cells_alphas = network_cells_alphas
+    def update_network_genotype_info(self, model):
+        self.current_network_cells_alphas = torch.cat((model.alphas_normal, model.alphas_reduce), dim=0)
+        if self.oracle:
+            self.oracle.update_genotype_from_network(model)
 
     def forward(self, input, target):
         cross_entropy_loss = super(CustomLoss, self).forward(input, target)
-        op_rate = self.oracle.get_operation_rate_v2(self.current_network_cells_alphas) if self.oracle else 0.0
+        op_rate = self.oracle.get_operation_rate_v3(self.current_network_cells_alphas) if self.oracle else 0.0
         op_loss = op_rate * OPERATION_LOSS_W
-        logging.info('LOSS = {} + {}'.format(cross_entropy_loss.data[0], op_loss.data[0]))
+        if PYTHON_3:
+            logging.info('LOSS = {} + {}'.format(cross_entropy_loss, op_loss))
+        else:
+            logging.info('LOSS = {} + {}'.format(cross_entropy_loss.data[0], op_loss.data[0]))
         return cross_entropy_loss + op_loss
