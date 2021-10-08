@@ -31,12 +31,11 @@ class FPOpCounter:
         for i in range(n_layers):
             if i in [n_layers // 3, 2 * n_layers // 3]:
                 c_curr *= 2
-                input_s_curr = tuple(int(x/2) for x in input_s_curr)
+                input_s_curr = tuple(int(x / 2) for x in input_s_curr)
             cell = (c_prev, c_curr, input_s_prev, input_s_curr)
             c_prev = c_curr
             input_s_prev = input_s_curr
             self.layers.append(cell)
-
 
     @staticmethod
     def conv2d(w_in, h_in, c_in, c_out, kernel_size, stride, padding, dilation, groups, bias):
@@ -230,7 +229,8 @@ class OpPerformanceOracle:
         return sum(softmaxes_diff) / len(network_cells_alphas)
 
     def get_operation_rate_v3(self, network_cells_alphas):
-        return torch.cuda.FloatTensor([self.fp_op_counter.get_current_fp_op_rate()])
+        rate_tensor = torch.cuda.FloatTensor([self.fp_op_counter.get_current_fp_op_rate()])
+        return torch.autograd.Variable(rate_tensor)
 
     def _compute_softmaxed_weights(self):
         weight_array = []

@@ -16,7 +16,7 @@ def profile_arch(arch_id, log):
 def main():
     assert type(genotypes.M1) == genotypes.Genotype
     log = {}
-    for arch_id in [1, 2, 3, 5, 6, 7, 8, 9]:
+    for arch_id in [1, 2, 3, 5, 6, 7, 8, 9, 10]:
         profile_arch('M{}'.format(arch_id), log)
     for a in log:
         print('{}: {}'.format(a, log[a]))
