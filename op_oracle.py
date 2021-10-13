@@ -128,8 +128,8 @@ class FPOpCounter:
     def update_genotype_from_network(self, network):
         self.genotype = network.genotype()
         fp_ops = self.count_network_fp_ops()
-        self.min_fp_op = fp_ops if self.min_fp_op is None or fp_ops < self.min_fp_op else self.min_fp_op
-        self.max_fp_op = fp_ops if self.max_fp_op is None or fp_ops > self.max_fp_op else self.max_fp_op
+        self.min_fp_op = fp_ops if not self.min_fp_op or fp_ops < self.min_fp_op else self.min_fp_op
+        self.max_fp_op = fp_ops if not self.max_fp_op or fp_ops > self.max_fp_op else self.max_fp_op
         self.last_fp_op = fp_ops
 
     @staticmethod
@@ -163,6 +163,9 @@ class FPOpCounter:
         """
         numerator = self.last_fp_op - self.min_fp_op
         denominator = self.max_fp_op - self.min_fp_op
+        # logging.info(
+        #     'Current FP OP Rate: ({:.2f} - {:.2f}) / ({:.2f} - {:.2f})'.format(self.last_fp_op, self.min_fp_op,
+        #                                                                        self.max_fp_op, self.min_fp_op))
         return numerator / denominator if denominator != 0 else 0
 
 
@@ -258,5 +261,5 @@ class CustomLoss(nn.CrossEntropyLoss):
         if PYTHON_3:
             logging.info('LOSS = {} + {}'.format(cross_entropy_loss.data.item(), op_loss.data.item()))
         else:
-            logging.info('LOSS = {} + {}'.format(cross_entropy_loss.data[0], op_loss.data[0]))
+            logging.info('LOSS = {} + {}'.format(cross_entropy_loss, op_loss))
         return cross_entropy_loss + op_loss
