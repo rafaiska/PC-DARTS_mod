@@ -44,7 +44,7 @@ class FPOpCounter:
         out_w = (w_in - eff_ks + 2 * padding) // stride + 1
 
         # fp_ops = (c_out * c_in // groups * kernel_size * kernel_size + 1) * out_h * out_w
-        fp_ops = (c_in // groups * kernel_size * kernel_size + 1) * out_h * out_w
+        fp_ops = (c_in * c_out // groups * kernel_size * kernel_size) * out_h * out_w
         if bias:
             fp_ops += c_out * out_w * out_h
 
@@ -54,7 +54,8 @@ class FPOpCounter:
     def pool2d(w_in, h_in, c, kernel_size, stride, padding):
         out_h = (h_in - kernel_size + 2 * padding) // stride + 1
         out_w = (w_in - kernel_size + 2 * padding) // stride + 1
-        return c * out_h * out_w * kernel_size * kernel_size
+        # return c * out_h * out_w * kernel_size * kernel_size
+        return c * out_h * out_w
 
     @staticmethod
     def _identity():
@@ -74,7 +75,8 @@ class FPOpCounter:
 
     @staticmethod
     def max_pool_3x3(w_in, h_in, c, stride):
-        return FPOpCounter.pool2d(w_in, h_in, c, 3, stride, 1)
+        # return FPOpCounter.pool2d(w_in, h_in, c, 3, stride, 1)
+        return 0
 
     @staticmethod
     def _factorized_reduce(w_in, h_in, c):
@@ -133,12 +135,11 @@ class FPOpCounter:
         self.last_fp_op = fp_ops
 
     @staticmethod
-    def _count_layer_op_fp_ops(op, src_node, reduce, input_c, output_c, input_s, output_s):
+    def _count_layer_op_fp_ops(op, src_node, reduce, output_c, input_s, output_s):
         op_counter = eval('FPOpCounter.{}'.format(op))
         stride = 2 if src_node < 2 and reduce else 1
         w_in, h_in = input_s if src_node < 2 else output_s
-        c = input_c if src_node < 2 else output_c
-        return op_counter(w_in, h_in, c, stride)
+        return op_counter(w_in, h_in, output_c, stride)
 
     def _count_layer_fp_ops(self, layer):
         fp_ops = 0
@@ -148,7 +149,7 @@ class FPOpCounter:
         for dst_node in range(2, 6):
             for i in range(2):
                 op, src_node = sub_geno[(dst_node - 2) * 2 + i]
-                fp_ops += FPOpCounter._count_layer_op_fp_ops(op, src_node, reduce, input_c, output_c, input_s, output_s)
+                fp_ops += FPOpCounter._count_layer_op_fp_ops(op, src_node, reduce, output_c, input_s, output_s)
         return fp_ops
 
     def count_network_fp_ops(self):
