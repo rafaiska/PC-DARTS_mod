@@ -1,11 +1,13 @@
 import logging
 import sys
 
+import thop
 import torch
 import torch.nn.functional as F
 from torch import nn
 
 from genotypes import PRIMITIVES
+from model import NetworkCIFAR
 
 OPERATION_LOSS_W = 2.0
 PYTHON_3 = sys.version[0] == '3'
@@ -17,12 +19,13 @@ class FPOpCounter:
     https://arxiv.org/abs/1811.03060
     """
 
-    def __init__(self):
+    def __init__(self, use_thop=False):
         self.layers = None
         self.genotype = None
         self.min_fp_op = None
         self.max_fp_op = None
         self.last_fp_op = None
+        self.use_thop = use_thop
 
     def setup(self, input_width, input_height, n_layers, init_channels):
         self.layers = []
@@ -129,7 +132,14 @@ class FPOpCounter:
 
     def update_genotype_from_network(self, network):
         self.genotype = network.genotype()
-        fp_ops = self.count_network_fp_ops()
+        if not self.use_thop:
+            fp_ops = self.count_network_fp_ops()
+        else:
+            validation_net = NetworkCIFAR(36, 10, 20, False, self.genotype).cuda()
+            validation_net.drop_path_prob = 0.0
+            inpt = torch.autograd.Variable(torch.randn(1, 3, 32, 32).cuda())
+            fp_ops, _ = thop.profile(validation_net, inputs=(inpt,), verbose=False)
+
         self.min_fp_op = fp_ops if not self.min_fp_op or fp_ops < self.min_fp_op else self.min_fp_op
         self.max_fp_op = fp_ops if not self.max_fp_op or fp_ops > self.max_fp_op else self.max_fp_op
         self.last_fp_op = fp_ops
@@ -174,7 +184,7 @@ class OpPerformanceOracle:
     def __init__(self):
         self.weights = {}
         self.softmaxed_weights = None
-        self.fp_op_counter = FPOpCounter()
+        self.fp_op_counter = FPOpCounter(use_thop=True)
 
     def setup_counter(self, input_w, input_h, n_layers, init_channels):
         self.fp_op_counter.setup(input_w, input_h, n_layers, init_channels)
