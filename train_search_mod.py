@@ -191,7 +191,7 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, 
         macs = arch_criterion.get_current_macs()
 
         if step % args.report_freq == 0:
-            logging.info('train %03d %e %f %f', step, objs.avg, top1.avg, top5.avg, macs)
+            logging.info('train %03d %e %f %f %f', step, objs.avg, top1.avg, top5.avg, macs)
 
     return top1.avg, objs.avg
 
