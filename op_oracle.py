@@ -186,6 +186,9 @@ class OpPerformanceOracle:
         self.softmaxed_weights = None
         self.fp_op_counter = FPOpCounter(use_thop=True)
 
+    def get_current_macs(self):
+        return self.fp_op_counter.last_fp_op
+
     def setup_counter(self, input_w, input_h, n_layers, init_channels):
         self.fp_op_counter.setup(input_w, input_h, n_layers, init_channels)
 
@@ -260,6 +263,9 @@ class CustomLoss(nn.CrossEntropyLoss):
         self.current_network_cells_alphas = current_alpha
         self.oracle = oracle
 
+    def get_current_macs(self):
+        return self.oracle.get_current_macs()
+
     def update_network_genotype_info(self, model):
         self.current_network_cells_alphas = torch.cat((model.alphas_normal, model.alphas_reduce), dim=0)
         if self.oracle:
@@ -268,7 +274,7 @@ class CustomLoss(nn.CrossEntropyLoss):
     def forward(self, input, target):
         cross_entropy_loss = super(CustomLoss, self).forward(input, target)
         op_rate = self.oracle.get_operation_rate_v3(self.current_network_cells_alphas) if self.oracle else 0.0
-        op_loss = op_rate * OPERATION_LOSS_W
+        op_loss = op_rate * cross_entropy_loss * OPERATION_LOSS_W
         if PYTHON_3:
             logging.info('LOSS = {} + {}'.format(cross_entropy_loss.data.item(), op_loss.data.item()))
         else:
