@@ -18,7 +18,7 @@ import my_utils
 import utils
 from architect import Architect
 from model_search import Network
-from op_oracle import OpPerformanceOracle, CustomLoss
+from op_oracle import OpPerformanceOracle, CustomLoss, FPOpCounter
 
 parser = argparse.ArgumentParser("cifar")
 parser.add_argument('--data', type=str, default='../data', help='location of the data corpus')
@@ -188,7 +188,10 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, 
         objs.update(loss.data[0], n)
         top1.update(prec1.data[0], n)
         top5.update(prec5.data[0], n)
-        macs = arch_criterion.get_current_macs()
+        if args.custom_loss:
+            macs = arch_criterion.get_current_macs()
+        else:
+            macs = FPOpCounter.get_macs_from_model(model)
 
         if step % args.report_freq == 0:
             logging.info('train %03d %e %f %f %f', step, objs.avg, top1.avg, top5.avg, macs)

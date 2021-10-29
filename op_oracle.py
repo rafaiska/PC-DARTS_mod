@@ -145,6 +145,14 @@ class FPOpCounter:
         self.last_fp_op = fp_ops
 
     @staticmethod
+    def get_macs_from_model(network):
+        validation_net = NetworkCIFAR(36, 10, 20, False, network.genotype()).cuda()
+        validation_net.drop_path_prob = 0.0
+        inpt = torch.autograd.Variable(torch.randn(1, 3, 32, 32).cuda())
+        fp_ops, _ = thop.profile(validation_net, inputs=(inpt,), verbose=False)
+        return fp_ops
+
+    @staticmethod
     def _count_layer_op_fp_ops(op, src_node, reduce, output_c, input_s, output_s):
         op_counter = eval('FPOpCounter.{}'.format(op))
         stride = 2 if src_node < 2 and reduce else 1
