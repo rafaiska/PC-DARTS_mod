@@ -22,7 +22,7 @@ def get_macs(network):
 def main():
     assert type(genotypes.M1) == genotypes.Genotype
     log = {}
-    for arch_id in [1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12]:
+    for arch_id in [1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]:
         arch_id_str = 'M{}'.format(arch_id)
         network = NetworkCIFAR(36, 10, 20, False, eval('genotypes.{}'.format(arch_id_str))).cuda()
         cpu_time, cuda_time = profile_arch(network)
