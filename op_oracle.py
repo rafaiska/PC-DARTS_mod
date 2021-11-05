@@ -9,7 +9,7 @@ from torch import nn
 from genotypes import PRIMITIVES
 from model import NetworkCIFAR
 
-OPERATION_LOSS_W = 1.0
+OPERATION_LOSS_W = 2.0
 PYTHON_3 = sys.version[0] == '3'
 
 
@@ -282,7 +282,7 @@ class CustomLoss(nn.CrossEntropyLoss):
     def forward(self, input, target):
         cross_entropy_loss = super(CustomLoss, self).forward(input, target)
         op_rate = self.oracle.get_operation_rate_v3(self.current_network_cells_alphas) if self.oracle else 0.0
-        op_loss = - torch.log(1.0 - op_rate) * OPERATION_LOSS_W
+        op_loss = op_rate * cross_entropy_loss * OPERATION_LOSS_W
         final_loss = cross_entropy_loss + op_loss
         if PYTHON_3:
             logging.info('LOSS = {} + {} = {}'.format(
