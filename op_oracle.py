@@ -9,7 +9,7 @@ from torch import nn
 from genotypes import PRIMITIVES
 from model import NetworkCIFAR
 
-OPERATION_LOSS_W = 2.0
+OPERATION_LOSS_W = 10.0
 PYTHON_3 = sys.version[0] == '3'
 
 
