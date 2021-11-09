@@ -283,7 +283,8 @@ class CustomLoss(nn.CrossEntropyLoss):
     def forward(self, input, target):
         cross_entropy_loss = super(CustomLoss, self).forward(input, target)
         op_rate = self.oracle.get_operation_rate_v3(self.current_network_cells_alphas) if self.oracle else 0.0
-        op_loss = - min(torch.log(1.0 - op_rate) * OPERATION_LOSS_W, MAX_OP_LOSS)
+        c_tensors = torch.cat((- torch.log(1.0 - op_rate) * OPERATION_LOSS_W, MAX_OP_LOSS), dim=-1)
+        op_loss = torch.min(c_tensors)
         final_loss = cross_entropy_loss + op_loss
         if PYTHON_3:
             logging.info('LOSS = {} + {} = {}'.format(
