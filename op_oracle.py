@@ -1,17 +1,27 @@
 import logging
 import sys
 
-import thop
 import torch
 import torch.nn.functional as F
 from torch import nn
 
+import thop
 from genotypes import PRIMITIVES
 from model import NetworkCIFAR
+from operations import OPS
 
-OPERATION_LOSS_W = 2.0
+OPERATION_LOSS_W = 10.0
 MAX_OP_LOSS = torch.autograd.Variable(torch.cuda.FloatTensor([3.0]))
 PYTHON_3 = sys.version[0] == '3'
+
+N_INPUTS = [torch.randn(1, 3, 2, 2).cuda(),
+            torch.randn(1, 3, 4, 4).cuda(),
+            torch.randn(1, 3, 8, 8).cuda(),
+            torch.randn(1, 3, 16, 16).cuda(),
+            torch.randn(1, 3, 32, 32).cuda(),
+            torch.randn(1, 3, 64, 64).cuda(),
+            torch.randn(1, 3, 128, 128).cuda(),
+            ]
 
 
 class FPOpCounter:
@@ -211,14 +221,29 @@ class OpPerformanceOracle:
 
     def set_default_weights(self):
         self.reset_weights()
-        self.set_weight('none', 2)
-        self.set_weight('max_pool_3x3', 2)
-        self.set_weight('avg_pool_3x3', 2)
-        self.set_weight('skip_connect', 2)
+        self.set_weight('none', 1)
+        self.set_weight('max_pool_3x3', 1)
+        self.set_weight('avg_pool_3x3', 1)
+        self.set_weight('skip_connect', 1)
         self.set_weight('sep_conv_3x3', 1)
-        self.set_weight('sep_conv_5x5', 2)
-        self.set_weight('dil_conv_3x3', 2)
-        self.set_weight('dil_conv_5x5', 2)
+        self.set_weight('sep_conv_5x5', 1)
+        self.set_weight('dil_conv_3x3', 1)
+        self.set_weight('dil_conv_5x5', 1)
+        self._compute_softmaxed_weights()
+
+    def _compute_average_macs(self, operation_name):
+        op_constructor = OPS[operation_name]
+        macs_list = []
+        for i in N_INPUTS:
+            op = op_constructor(i.shape[1], 1, True).cuda()
+            macs, _ = thop.profile(op, inputs=(i,), verbose=False)
+            macs_list.append(macs)
+        self.weights[operation_name] = sum(macs_list) / float(len(macs_list))
+
+    def set_weights_from_macs(self):
+        self.reset_weights()
+        for p in PRIMITIVES:
+            self._compute_average_macs(p)
         self._compute_softmaxed_weights()
 
     def set_weight(self, operation, weight):
@@ -226,7 +251,7 @@ class OpPerformanceOracle:
 
     def _weights_are_valid(self):
         for weight in self.weights.values():
-            if not weight:
+            if weight is None:
                 return False
         return True
 
@@ -239,9 +264,12 @@ class OpPerformanceOracle:
             if len(self.weights) != len(alpha):
                 raise RuntimeError('Incorrect dimension for Alpha')
             a_softmax = F.softmax(alpha, dim=0)
-            for i in range(alpha.dim()):
+            for i in range(len(alpha)):
                 weighted_alphas.append(self.weights[PRIMITIVES[i]] * a_softmax[i])
-        return sum(weighted_alphas) / (total_weight * len(network_cells_alphas))
+                # print('{}: {}*{}={}'.format(
+                #     PRIMITIVES[i], self.weights[PRIMITIVES[i]], a_softmax[i], weighted_alphas[-1]))
+        rate = sum(weighted_alphas) / (total_weight * len(network_cells_alphas))
+        return torch.autograd.Variable(torch.cuda.FloatTensor([rate]))
 
     def get_operation_rate_v2(self, network_cells_alphas):
         softmaxes_diff = []
@@ -282,7 +310,7 @@ class CustomLoss(nn.CrossEntropyLoss):
 
     def forward(self, input, target):
         cross_entropy_loss = super(CustomLoss, self).forward(input, target)
-        op_rate = self.oracle.get_operation_rate_v3(self.current_network_cells_alphas) if self.oracle else 0.0
+        op_rate = self.oracle.get_operation_rate(self.current_network_cells_alphas) if self.oracle else 0.0
         c_tensors = torch.cat((- torch.log(1.0 - op_rate) * OPERATION_LOSS_W, MAX_OP_LOSS), dim=-1)
         op_loss = torch.min(c_tensors)
         final_loss = cross_entropy_loss + op_loss

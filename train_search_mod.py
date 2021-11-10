@@ -84,7 +84,7 @@ def main():
     arch_criterion = None
     if args.custom_loss:
         oracle = OpPerformanceOracle()
-        oracle.set_default_weights()
+        oracle.set_weights_from_macs()
         oracle.setup_counter(32, 32, 20, 36)
         arch_criterion = CustomLoss(oracle=oracle)
     criterion = nn.CrossEntropyLoss()

@@ -15,15 +15,16 @@ def profile_arch(network):
 
 
 def get_macs(network):
-    macs, _ = thop.profile(network, inputs=(torch.randn(1, 3, 32, 32).cuda(),))
+    macs, _ = thop.profile(network, inputs=(torch.randn(1, 3, 32, 32).cuda(),), verbose=False)
     return macs
 
 
 def main():
     assert type(genotypes.M1) == genotypes.Genotype
     log = {}
-    for arch_id in [1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]:
+    for arch_id in [1, 2, 3, *list(range(5, 18)), *list(range(19, 30))]:
         arch_id_str = 'M{}'.format(arch_id)
+        print('Profiling arch {}'.format(arch_id_str))
         network = NetworkCIFAR(36, 10, 20, False, eval('genotypes.{}'.format(arch_id_str))).cuda()
         cpu_time, cuda_time = profile_arch(network)
         fc = FPOpCounter()
@@ -32,6 +33,7 @@ def main():
         fp_ops = fc.count_network_fp_ops()
         macs = get_macs(network)
         log[arch_id_str] = (cpu_time, cuda_time, fp_ops, macs)
+        torch.cuda.empty_cache()
     with open('arch_data.csv', 'w') as fp:
         for a in log:
             fp.write('{}, {}, {}, {}, {}\n'.format(a, log[a][0], log[a][1], log[a][2], log[a][3]))
