@@ -164,6 +164,8 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, 
         input_search = input_search.cuda()
         target_search = target_search.cuda(non_blocking=True)
 
+        if epoch == 20:
+            arch_criterion.enable_closs()
         if epoch >= 15:
             architect.step(input, target, input_search, target_search, lr, optimizer, unrolled=args.unrolled)
 

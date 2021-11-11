@@ -299,6 +299,10 @@ class CustomLoss(nn.CrossEntropyLoss):
         super(CustomLoss, self).__init__(weight, size_average)
         self.current_network_cells_alphas = current_alpha
         self.oracle = oracle
+        self.closs_enabled = False
+
+    def enable_closs(self):
+        self.closs_enabled = True
 
     def get_current_macs(self):
         return self.oracle.get_current_macs()
@@ -310,7 +314,10 @@ class CustomLoss(nn.CrossEntropyLoss):
 
     def forward(self, input, target):
         cross_entropy_loss = super(CustomLoss, self).forward(input, target)
-        op_rate = self.oracle.get_operation_rate(self.current_network_cells_alphas) if self.oracle else 0.0
+        if self.oracle and self.closs_enabled:
+            op_rate = self.oracle.get_operation_rate(self.current_network_cells_alphas)
+        else:
+            op_rate = torch.autograd.Variable(torch.cuda.FloatTensor([0.0]))
         c_tensors = torch.cat((- torch.log(1.0 - op_rate) * OPERATION_LOSS_W, MAX_OP_LOSS), dim=-1)
         op_loss = torch.min(c_tensors)
         final_loss = cross_entropy_loss + op_loss
