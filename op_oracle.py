@@ -10,7 +10,7 @@ from genotypes import PRIMITIVES
 from model import NetworkCIFAR
 from operations import OPS
 
-OPERATION_LOSS_W = 10.0
+OPERATION_LOSS_W = 2.0
 MAX_OP_LOSS = torch.autograd.Variable(torch.cuda.FloatTensor([3.0]))
 PYTHON_3 = sys.version[0] == '3'
 
