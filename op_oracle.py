@@ -236,7 +236,7 @@ class OpPerformanceOracle:
         macs_list = []
         for i in N_INPUTS:
             op = op_constructor(i.shape[1], 1, True).cuda()
-            macs, _ = thop.profile(op, inputs=(i,), verbose=False)
+            macs, _ = thop.profile(op, inputs=(torch.autograd.Variable(i),), verbose=False)
             macs_list.append(macs)
         self.weights[operation_name] = sum(macs_list) / float(len(macs_list))
 
