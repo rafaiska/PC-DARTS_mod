@@ -268,7 +268,7 @@ class OpPerformanceOracle:
                 weighted_alphas.append(self.weights[PRIMITIVES[i]] * a_softmax[i])
                 # print('{}: {}*{}={}'.format(
                 #     PRIMITIVES[i], self.weights[PRIMITIVES[i]], a_softmax[i], weighted_alphas[-1]))
-        rate = sum(weighted_alphas) / (total_weight * len(network_cells_alphas))
+        rate = float(sum(weighted_alphas)) / (total_weight * len(network_cells_alphas))
         return torch.autograd.Variable(torch.cuda.FloatTensor([rate]))
 
     def get_operation_rate_v2(self, network_cells_alphas):
