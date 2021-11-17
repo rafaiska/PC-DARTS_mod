@@ -9,6 +9,7 @@ from utils import load
 
 SUCCEEDED_EXP_STR = 'valid_acc'
 CHECKPOINT_FILE = 'checkpoint.info'
+WARMUP_FILE = 'warmup.pt'
 
 
 def _parse_list_in_line_p3(line):
@@ -123,6 +124,11 @@ def get_checkpoint_info():
 
 def load_checkpoint_model(model, exp_dir):
     model_path = '{}/weights.pt'.format(exp_dir)
+    load(model, model_path)
+
+
+def load_warmup(model):
+    model_path = './{}'.format(WARMUP_FILE)
     load(model, model_path)
 
 

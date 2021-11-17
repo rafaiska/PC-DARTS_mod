@@ -245,6 +245,7 @@ class OpPerformanceOracle:
         for p in PRIMITIVES:
             self._compute_average_macs(p)
         self._compute_softmaxed_weights()
+        logging.info('COMPUTED ORACLE WEIGHTS: {}'.format(self.weights))
 
     def set_weight(self, operation, weight):
         self.weights[operation] = weight

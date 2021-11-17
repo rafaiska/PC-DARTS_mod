@@ -13,6 +13,7 @@ import torch.nn.functional as F
 import torch.utils
 import torchvision.datasets as dset
 
+import my_utils
 import utils
 from architect import Architect
 from model_search import Network
@@ -43,10 +44,17 @@ parser.add_argument('--unrolled', action='store_true', default=False, help='use 
 parser.add_argument('--arch_learning_rate', type=float, default=6e-4, help='learning rate for arch encoding')
 parser.add_argument('--arch_weight_decay', type=float, default=1e-3, help='weight decay for arch encoding')
 parser.add_argument('--custom_loss', action='store_true', default=False, help='use custom loss')
+parser.add_argument('--load_warmup', action='store_true', default=False,
+                    help='load warmup training weights (15 epochs)')
 args = parser.parse_args()
 
 args.save = 'search-{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S"))
 utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
+
+if args.load_warmup:
+    start_epoch = 15
+else:
+    start_epoch = 0
 
 log_format = '%(asctime)s %(message)s'
 logging.basicConfig(stream=sys.stdout, level=logging.INFO,
@@ -85,6 +93,8 @@ def main():
     model = Network(args.init_channels, CIFAR_CLASSES, args.layers, arch_criterion if arch_criterion else criterion)
     model = model.cuda()
     logging.info("param size = %fMB", utils.count_parameters_in_MB(model))
+    if args.load_warmup:
+        my_utils.load_warmup(model)
 
     optimizer = torch.optim.SGD(
         model.parameters(),
@@ -117,7 +127,7 @@ def main():
 
     architect = Architect(model, args)
 
-    for epoch in range(args.epochs):
+    for epoch in range(start_epoch, args.epochs):
         scheduler.step()
         lr = scheduler.get_lr()[0]
         logging.info('epoch %d lr %e', epoch, lr)
@@ -148,7 +158,7 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, 
 
     for step, (input, target) in enumerate(train_queue):
         if args.custom_loss:
-          arch_criterion.update_network_genotype_info(model)
+            arch_criterion.update_network_genotype_info(model)
         model.train()
         n = input.size(0)
         input = input.cuda()

@@ -46,6 +46,7 @@ parser.add_argument('--arch_learning_rate', type=float, default=6e-4, help='lear
 parser.add_argument('--arch_weight_decay', type=float, default=1e-3, help='weight decay for arch encoding')
 parser.add_argument('--custom_loss', action='store_true', default=False, help='use custom loss')
 parser.add_argument('--resume_checkpoint', action='store_true', default=False, help='resume training from checkpoint')
+parser.add_argument('--load_warmup', action='store_true', default=False, help='load warmup training weights (15 epochs)')
 args = parser.parse_args()
 
 if not args.resume_checkpoint:
@@ -54,6 +55,11 @@ if not args.resume_checkpoint:
     checkpoint_epoch = None
 else:
     args.save, checkpoint_epoch = my_utils.get_checkpoint_info()
+
+if args.load_warmup:
+    start_epoch = 15
+else:
+    start_epoch = 0
 
 log_format = '%(asctime)s %(message)s'
 logging.basicConfig(stream=sys.stdout, level=logging.INFO,
@@ -92,6 +98,8 @@ def main():
     model = Network(args.init_channels, CIFAR_CLASSES, args.layers, arch_criterion if arch_criterion else criterion)
     model = model.cuda()
     logging.info("param size = %fMB", utils.count_parameters_in_MB(model))
+    if args.load_warmup:
+        my_utils.load_warmup(model)
 
     optimizer = torch.optim.SGD(
         model.parameters(),
@@ -124,7 +132,7 @@ def main():
 
     architect = Architect(model, args)
 
-    for epoch in range(args.epochs):
+    for epoch in range(start_epoch, args.epochs):
         scheduler.step()
         lr = scheduler.get_lr()[0]
         logging.info('epoch %d lr %e', epoch, lr)
