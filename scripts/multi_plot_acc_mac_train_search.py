@@ -10,8 +10,10 @@ EXP_CLOSS_XKW2 = ['search-EXP-20211106-152513', 'search-EXP-20211105-120555']
 EXP_CLOSS_XKW10 = ['search-EXP-20211107-092623', 'search-EXP-20211107-092453']
 EXP_CLOSS_KW_W2 = ['search-EXP-20211107-233004', 'search-EXP-20211107-233603']
 EXP_CLOSS_LOG1MK = ['search-EXP-20211109-101420', 'search-EXP-20211109-102212']
+EXP_CLOSS_LOG1MK_ARCH_WARMUP = ['search-EXP-20211112-091217', 'search-EXP-20211112-065726']
 EXP_CLOSS_OPORACLE_W10 = ['search-EXP-20211111-091754', 'search-EXP-20211111-093439']
 EXP_CLOSS_OPORACLE_W2 = ['search-EXP-20211111-193703', 'search-EXP-20211111-195217']
+EXP_CLOSS_DIFF_V1 = ['search-EXP-20211117-234131', 'search-EXP-20211117-234203']
 
 
 def configure_plot(exp_id, fig, accs, macs, ax):
@@ -97,8 +99,11 @@ def main():
     plot_case('x + x*k*w Loss Function with w=10', [*EXP_CLOSS_XKW10, *EXP_WO_CLOSS])
     plot_case('x + k*w Loss Function with w=2', [*EXP_CLOSS_KW_W2, *EXP_WO_CLOSS])
     plot_case('x + min(-log(1-k) * w, max_cl) Loss Function with w=2', [*EXP_CLOSS_LOG1MK, *EXP_WO_CLOSS])
+    plot_case('x + min(-log(1-k) * w, max_cl) Loss Function with w=2 and arch warmup',
+              [*EXP_CLOSS_LOG1MK_ARCH_WARMUP, *EXP_WO_CLOSS])
     plot_case('MACs based Op. Oracle with w=10', [*EXP_CLOSS_OPORACLE_W10, *EXP_WO_CLOSS])
     plot_case('MACs based Op. Oracle with w=2', [*EXP_CLOSS_OPORACLE_W2, *EXP_WO_CLOSS])
+    plot_case('Differentiable Loss Function V1 with w=2div10e6', [*EXP_CLOSS_DIFF_V1, *EXP_WO_CLOSS])
 
 
 if __name__ == '__main__':
