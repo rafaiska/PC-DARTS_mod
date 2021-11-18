@@ -11,6 +11,7 @@ from model import NetworkCIFAR
 from operations import OPS
 
 OPERATION_LOSS_W = 1.0 / 10e5
+REDUCE_IMPORTANCE = 2.0 / 20.0
 MAX_OP_LOSS = torch.autograd.Variable(torch.cuda.FloatTensor([3.0]))
 PYTHON_3 = sys.version[0] == '3'
 
@@ -287,14 +288,17 @@ class OpPerformanceOracle:
         rate_tensor = torch.cuda.FloatTensor([self.fp_op_counter.get_current_fp_op_rate()])
         return torch.autograd.Variable(rate_tensor)
 
-    def get_operation_rate_v4(self, network_cells_alphas):
+    def get_operation_rate_v4(self, alpha_normal, alpha_reduce):
         if not self._weights_are_valid():
             raise RuntimeError('Undefined weights')
         weights_tensor = torch.autograd.Variable(
-            torch.cuda.FloatTensor([[self.weights[k] for k in PRIMITIVES] for _ in range(len(network_cells_alphas))]),
+            torch.cuda.FloatTensor([[self.weights[k] for k in PRIMITIVES] for _ in range(len(alpha_normal))]),
             requires_grad=True)
-        a_softmax = F.softmax(network_cells_alphas)
-        return (weights_tensor * a_softmax).sum()
+        normal_softmax = F.softmax(alpha_normal)
+        reduce_softmax = F.softmax(alpha_reduce)
+        normal_component = (weights_tensor * normal_softmax).sum()
+        reduce_component = (weights_tensor * reduce_softmax).sum()
+        return normal_component * (1 - REDUCE_IMPORTANCE) + reduce_component * REDUCE_IMPORTANCE
 
     def _compute_softmaxed_weights(self):
         weight_array = []
@@ -305,9 +309,10 @@ class OpPerformanceOracle:
 
 
 class CustomLoss(nn.CrossEntropyLoss):
-    def __init__(self, weight=None, size_average=True, ignore_index=-100, reduce=True, current_alpha=None, oracle=None):
+    def __init__(self, weight=None, size_average=True, ignore_index=-100, reduce=True, oracle=None):
         super(CustomLoss, self).__init__(weight, size_average)
-        self.current_network_cells_alphas = current_alpha
+        self.alpha_normal = None
+        self.alpha_reduce = None
         self.oracle = oracle
         self.closs_enabled = False
 
@@ -318,16 +323,17 @@ class CustomLoss(nn.CrossEntropyLoss):
         return self.oracle.get_current_macs()
 
     def update_network_genotype_info(self, model):
-        self.current_network_cells_alphas = torch.cat((model.alphas_normal, model.alphas_reduce), dim=0)
+        self.alpha_normal = model.alphas_normal
+        self.alpha_reduce = model.alphas_reduce
         if self.oracle:
             self.oracle.update_genotype_from_network(model)
 
     def forward(self, input, target):
         cross_entropy_loss = super(CustomLoss, self).forward(input, target)
         if self.oracle and self.closs_enabled:
-            op_rate = self.oracle.get_operation_rate_v4(self.current_network_cells_alphas)
+            op_rate = self.oracle.get_operation_rate_v4(self.alpha_normal, self.alpha_reduce)
         else:
-            op_rate = torch.autograd.Variable(torch.cuda.FloatTensor([0.0]))
+            op_rate = torch.autograd.Variable(torch.cuda.FloatTensor([0.0]), requires_grad=True)
         op_loss = op_rate * OPERATION_LOSS_W
         final_loss = cross_entropy_loss + op_loss
         if PYTHON_3:

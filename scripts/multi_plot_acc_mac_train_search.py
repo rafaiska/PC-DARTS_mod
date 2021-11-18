@@ -15,10 +15,14 @@ EXP_CLOSS_OPORACLE_W10 = ['search-EXP-20211111-091754', 'search-EXP-20211111-093
 EXP_CLOSS_OPORACLE_W2 = ['search-EXP-20211111-193703', 'search-EXP-20211111-195217']
 EXP_CLOSS_DIFF_V1 = ['search-EXP-20211117-234131', 'search-EXP-20211117-234203']
 
+X_DIM = 50
+
 
 def configure_plot(exp_id, fig, accs, macs, ax):
-    ax.plot([x / 2 for x in range(len(accs))], accs, label='{} Acc'.format(exp_id))
-    ax.plot([x / 2 for x in range(len(macs))], [m / 10e6 for m in macs], label='{} MACS'.format(exp_id))
+    print(len(accs))
+    print(len(macs))
+    ax.plot([x / 2 for x in range(X_DIM*2-len(accs), X_DIM*2)], accs, label='{} Acc'.format(exp_id))
+    ax.plot([x / 2 for x in range(X_DIM*2-len(accs), X_DIM*2)], [m / 10e6 for m in macs], label='{} MACS'.format(exp_id))
     ax.legend()
 
     return fig, ax
@@ -72,7 +76,7 @@ def configure_axes(title, closs_ax, wocloss_ax):
     closs_ax.set_title('Training data using {}'.format(title))
     wocloss_ax.set_title('Training data without custom loss')
     for ax in [closs_ax, wocloss_ax]:
-        ax.set_xlim(0, 50)
+        ax.set_xlim(0, X_DIM)
         ax.set_ylim(0, 100)
         ax.set_ylabel('MACS (10e6), Top1 Acc')
         ax.set_xlabel('Training epoch')

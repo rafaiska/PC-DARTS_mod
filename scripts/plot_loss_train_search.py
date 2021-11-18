@@ -49,13 +49,10 @@ def build_from_exp_data(exp_path):
         if not line:
             break
         if ' LOSS = ' in line:
-            line = file_pt.readline()
-            ce_loss = float(line.split()[0])
+            splitted = line.split()
+            ce_loss = float(splitted[4])
             ce_loss_history.append(ce_loss)
-            for _ in range(2):
-                file_pt.readline()
-            line = file_pt.readline()
-            custom_loss = float(line.split()[0])
+            custom_loss = float(splitted[6])
             custom_loss_history.append(custom_loss)
     file_pt.close()
     return ce_loss_history, custom_loss_history
