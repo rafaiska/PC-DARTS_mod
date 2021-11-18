@@ -10,7 +10,7 @@ from genotypes import PRIMITIVES
 from model import NetworkCIFAR
 from operations import OPS
 
-OPERATION_LOSS_W = 2.0
+OPERATION_LOSS_W = 5.0 / 10e6
 MAX_OP_LOSS = torch.autograd.Variable(torch.cuda.FloatTensor([3.0]))
 PYTHON_3 = sys.version[0] == '3'
 
@@ -287,6 +287,15 @@ class OpPerformanceOracle:
         rate_tensor = torch.cuda.FloatTensor([self.fp_op_counter.get_current_fp_op_rate()])
         return torch.autograd.Variable(rate_tensor)
 
+    def get_operation_rate_v4(self, network_cells_alphas):
+        if not self._weights_are_valid():
+            raise RuntimeError('Undefined weights')
+        weights_tensor = torch.autograd.Variable(
+            torch.cuda.FloatTensor([[self.weights[k] for k in PRIMITIVES] for _ in range(len(network_cells_alphas))]),
+            requires_grad=True)
+        a_softmax = F.softmax(network_cells_alphas)
+        return (weights_tensor * a_softmax).sum()
+
     def _compute_softmaxed_weights(self):
         weight_array = []
         for op in PRIMITIVES:
@@ -316,11 +325,10 @@ class CustomLoss(nn.CrossEntropyLoss):
     def forward(self, input, target):
         cross_entropy_loss = super(CustomLoss, self).forward(input, target)
         if self.oracle and self.closs_enabled:
-            op_rate = self.oracle.get_operation_rate(self.current_network_cells_alphas)
+            op_rate = self.oracle.get_operation_rate_v4(self.current_network_cells_alphas)
         else:
             op_rate = torch.autograd.Variable(torch.cuda.FloatTensor([0.0]))
-        c_tensors = torch.cat((- torch.log(1.0 - op_rate) * OPERATION_LOSS_W, MAX_OP_LOSS), dim=-1)
-        op_loss = torch.min(c_tensors)
+        op_loss = op_rate * OPERATION_LOSS_W
         final_loss = cross_entropy_loss + op_loss
         if PYTHON_3:
             logging.info('LOSS = {} + {} = {}'.format(
