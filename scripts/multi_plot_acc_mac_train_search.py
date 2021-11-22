@@ -13,14 +13,14 @@ EXP_CLOSS_LOG1MK = ['search-EXP-20211109-101420', 'search-EXP-20211109-102212']
 EXP_CLOSS_LOG1MK_ARCH_WARMUP = ['search-EXP-20211112-091217', 'search-EXP-20211112-065726']
 EXP_CLOSS_OPORACLE_W10 = ['search-EXP-20211111-091754', 'search-EXP-20211111-093439']
 EXP_CLOSS_OPORACLE_W2 = ['search-EXP-20211111-193703', 'search-EXP-20211111-195217']
-EXP_CLOSS_DIFF_V1 = ['search-EXP-20211117-234131', 'search-EXP-20211117-234203']
+EXP_CLOSS_DIFF_V1_W2 = ['search-EXP-20211117-234131', 'search-EXP-20211117-234203']
+EXP_CLOSS_DIFF_V1_W10 = ['search-EXP-20211118-113344', 'search-EXP-20211118-115241']
+EXP_CLOSS_DIFF_V2_W10 = ['search-EXP-20211118-210858', 'search-EXP-20211118-211000']
 
 X_DIM = 50
 
 
 def configure_plot(exp_id, fig, accs, macs, ax):
-    print(len(accs))
-    print(len(macs))
     ax.plot([x / 2 for x in range(X_DIM*2-len(accs), X_DIM*2)], accs, label='{} Acc'.format(exp_id))
     ax.plot([x / 2 for x in range(X_DIM*2-len(accs), X_DIM*2)], [m / 10e6 for m in macs], label='{} MACS'.format(exp_id))
     ax.legend()
@@ -107,7 +107,9 @@ def main():
               [*EXP_CLOSS_LOG1MK_ARCH_WARMUP, *EXP_WO_CLOSS])
     plot_case('MACs based Op. Oracle with w=10', [*EXP_CLOSS_OPORACLE_W10, *EXP_WO_CLOSS])
     plot_case('MACs based Op. Oracle with w=2', [*EXP_CLOSS_OPORACLE_W2, *EXP_WO_CLOSS])
-    plot_case('Differentiable Loss Function V1 with w=2div10e6', [*EXP_CLOSS_DIFF_V1, *EXP_WO_CLOSS])
+    plot_case('Differentiable Loss Function V1 with w=2div10e6', [*EXP_CLOSS_DIFF_V1_W2, *EXP_WO_CLOSS])
+    plot_case('Differentiable Loss Function V1 with w=1div10e5', [*EXP_CLOSS_DIFF_V1_W10, *EXP_WO_CLOSS])
+    plot_case('Differentiable Loss Function V2 with w=1div10e5', [*EXP_CLOSS_DIFF_V2_W10, *EXP_WO_CLOSS])
 
 
 if __name__ == '__main__':

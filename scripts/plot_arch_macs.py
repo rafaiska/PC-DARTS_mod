@@ -8,7 +8,7 @@ from op_oracle import FPOpCounter
 
 
 def plot_arch_macs(plot_data):
-    fig = plt.figure()
+    fig = plt.figure(figsize=(16, 8))
     ax = fig.add_subplot(111)
     plt.xlabel('Arch')
     plt.ylabel('# MACS using thop')
@@ -26,7 +26,7 @@ def get_macs(network):
 def main():
     assert type(genotypes.M1) == genotypes.Genotype
     log = {}
-    for arch_id in [1, 2, 3, *list(range(5, 18)), *list(range(19, 39))]:
+    for arch_id in [1, 2, 3, *list(range(5, 18)), *list(range(19, 43))]:
         arch_id_str = 'M{}'.format(arch_id)
         print('Profiling arch {}'.format(arch_id_str))
         network = NetworkCIFAR(36, 10, 20, False, eval('genotypes.{}'.format(arch_id_str))).cuda()

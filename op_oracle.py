@@ -10,7 +10,6 @@ from genotypes import PRIMITIVES
 from model import NetworkCIFAR
 from operations import OPS
 
-OPERATION_LOSS_W = 1.0 / 10e5
 REDUCE_IMPORTANCE = 2.0 / 20.0
 MAX_OP_LOSS = torch.autograd.Variable(torch.cuda.FloatTensor([3.0]))
 PYTHON_3 = sys.version[0] == '3'
@@ -309,15 +308,16 @@ class OpPerformanceOracle:
 
 
 class CustomLoss(nn.CrossEntropyLoss):
-    def __init__(self, weight=None, size_average=True, ignore_index=-100, reduce=True, oracle=None):
+    def __init__(self, weight=None, size_average=True, ignore_index=-100, reduce=True, oracle=None, closs_w=1 / 10e6):
         super(CustomLoss, self).__init__(weight, size_average)
         self.alpha_normal = None
         self.alpha_reduce = None
         self.oracle = oracle
-        self.closs_enabled = False
+        self.c_loss_enabled = False
+        self.c_loss_w = closs_w
 
     def enable_closs(self):
-        self.closs_enabled = True
+        self.c_loss_enabled = True
 
     def get_current_macs(self):
         return self.oracle.get_current_macs()
@@ -330,11 +330,11 @@ class CustomLoss(nn.CrossEntropyLoss):
 
     def forward(self, input, target):
         cross_entropy_loss = super(CustomLoss, self).forward(input, target)
-        if self.oracle and self.closs_enabled:
+        if self.oracle and self.c_loss_enabled:
             op_rate = self.oracle.get_operation_rate_v4(self.alpha_normal, self.alpha_reduce)
         else:
             op_rate = torch.autograd.Variable(torch.cuda.FloatTensor([0.0]), requires_grad=True)
-        op_loss = op_rate * OPERATION_LOSS_W
+        op_loss = op_rate * self.c_loss_w
         final_loss = cross_entropy_loss + op_loss
         if PYTHON_3:
             logging.info('LOSS = {} + {} = {}'.format(

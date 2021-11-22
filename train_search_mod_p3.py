@@ -46,6 +46,7 @@ parser.add_argument('--arch_weight_decay', type=float, default=1e-3, help='weigh
 parser.add_argument('--custom_loss', action='store_true', default=False, help='use custom loss')
 parser.add_argument('--load_warmup', action='store_true', default=False,
                     help='load warmup training weights (15 epochs)')
+parser.add_argument('--c_loss_w', type=float, default=1/10e6, help='custom loss weight')
 args = parser.parse_args()
 
 args.save = 'search-{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S"))
@@ -87,7 +88,7 @@ def main():
         oracle = OpPerformanceOracle()
         oracle.set_weights_from_macs()
         oracle.setup_counter(32, 32, 20, 36)
-        arch_criterion = CustomLoss(oracle=oracle)
+        arch_criterion = CustomLoss(oracle=oracle, closs_w=args.c_loss_w)
     criterion = nn.CrossEntropyLoss()
     criterion = criterion.cuda()
     model = Network(args.init_channels, CIFAR_CLASSES, args.layers, arch_criterion if arch_criterion else criterion)
