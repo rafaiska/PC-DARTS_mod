@@ -10,6 +10,7 @@ from genotypes import PRIMITIVES
 from model import NetworkCIFAR
 from operations import OPS
 
+REPLACE_ZERO_RATE = 0.8
 REDUCE_IMPORTANCE = 2.0 / 20.0
 MAX_OP_LOSS = torch.autograd.Variable(torch.cuda.FloatTensor([3.0]))
 PYTHON_3 = sys.version[0] == '3'
@@ -246,6 +247,29 @@ class OpPerformanceOracle:
             self._compute_average_macs(p)
         self._compute_softmaxed_weights()
         logging.info('COMPUTED ORACLE WEIGHTS: {}'.format(self.weights))
+
+    def replace_zero_weights(self):
+        """
+        Adjust weights to avoid null weights on cheap, non convolutional operators
+        :return: None
+        """
+        def _is_zero(n):
+            return 0.1 > n >= 0.0
+
+        def _get_min_not_zero():
+            weights = list(self.weights.values())
+            weights.sort(reverse=True)
+            while _is_zero(weights[-1]):
+                weights.pop()
+            return weights[-1]
+
+        if not self._weights_are_valid():
+            raise RuntimeError
+        min_nz = _get_min_not_zero()
+        for op, w in self.weights.items():
+            if _is_zero(w):
+                self.weights[op] = min_nz * REPLACE_ZERO_RATE
+        logging.info('ADJUSTED ORACLE WEIGHTS: {}'.format(self.weights))
 
     def set_weight(self, operation, weight):
         self.weights[operation] = weight

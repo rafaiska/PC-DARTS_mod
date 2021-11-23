@@ -5,6 +5,7 @@ import torch
 
 import genotypes
 import model_search
+from model import NetworkCIFAR
 from utils import load
 
 SUCCEEDED_EXP_STR = 'valid_acc'
@@ -150,3 +151,12 @@ def print_genotype_from_exp_dir(exp_dir):
     model_path = '{}/weights.pt'.format(exp_dir)
     load(model, model_path)
     print(model.genotype())
+
+
+def profile_arch(hyper_network):
+    network = NetworkCIFAR(36, 10, 20, False, hyper_network.genotype()).cuda()
+    network.drop_path_prob = 0.0
+    with torch.autograd.profiler.profile(use_cuda=True) as prof:
+        for _ in range(100):
+            network(torch.randn(1, 3, 32, 32).cuda())
+    return prof.total_average().cpu_time_total, prof.total_average().cuda_time_total

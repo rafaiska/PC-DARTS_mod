@@ -92,6 +92,7 @@ def main():
     if args.custom_loss:
         oracle = OpPerformanceOracle()
         oracle.set_weights_from_macs()
+        oracle.replace_zero_weights()
         oracle.setup_counter(32, 32, 20, 36)
         arch_criterion = CustomLoss(oracle=oracle, closs_w=args.c_loss_w)
     criterion = nn.CrossEntropyLoss()
@@ -156,6 +157,7 @@ def main():
         utils.save(model, os.path.join(args.save, 'weights.pt'))
         genotype = model.genotype()
         logging.info('genotype = %s', genotype)
+        logging.info('time for 100 inferences on train arch = {} (cpu/gpu)'.format(my_utils.profile_arch(model)))
 
 
 def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, epoch, arch_criterion):
