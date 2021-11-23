@@ -153,15 +153,24 @@ def print_genotype_from_exp_dir(exp_dir):
     print(model.genotype())
 
 
-def profile_arch(hyper_network):
+def profile_arch(hyper_network, exp_dir, epoch):
     def make_random_input():
         r_i = torch.randn(1, 3, 32, 32).cuda()
         return torch.autograd.Variable(r_i)
+
+    path = '{}/{}.csv'.format(exp_dir, epoch)
+    torch.cuda.profiler.init(path, output_mode='csv')
     network = NetworkCIFAR(36, 10, 20, False, hyper_network.genotype()).cuda()
     network.drop_path_prob = 0.0
     with torch.cuda.profiler.profile():
-        network(make_random_input())  # Warmup CUDA memory allocator and profiler
-        with torch.autograd.profiler.emit_nvtx() as prof:
-            for _ in range(100):
-                network(make_random_input())
-    return prof.total_average().cpu_time_total, prof.total_average().cuda_time_total
+        for _ in range(100):
+            network(make_random_input())
+    cpu_time = 0
+    cuda_time = 0
+    with open(path, 'r') as fp:
+        for line in fp:
+            splitted = line.split(',')
+            if len(splitted) == 13 and splitted[0] != 'gpustarttimestamp':
+                cpu_time += float(splitted[4])
+                cuda_time += float(splitted[3])
+    return cpu_time, cuda_time

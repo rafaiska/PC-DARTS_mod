@@ -46,8 +46,9 @@ parser.add_argument('--arch_learning_rate', type=float, default=6e-4, help='lear
 parser.add_argument('--arch_weight_decay', type=float, default=1e-3, help='weight decay for arch encoding')
 parser.add_argument('--custom_loss', action='store_true', default=False, help='use custom loss')
 parser.add_argument('--resume_checkpoint', action='store_true', default=False, help='resume training from checkpoint')
-parser.add_argument('--load_warmup', action='store_true', default=False, help='load warmup training weights (15 epochs)')
-parser.add_argument('--c_loss_w', type=float, default=1/10e6, help='custom loss weight')
+parser.add_argument('--load_warmup', action='store_true', default=False,
+                    help='load warmup training weights (15 epochs)')
+parser.add_argument('--c_loss_w', type=float, default=1 / 10e6, help='custom loss weight')
 args = parser.parse_args()
 
 if not args.resume_checkpoint:
@@ -157,7 +158,8 @@ def main():
         utils.save(model, os.path.join(args.save, 'weights.pt'))
         genotype = model.genotype()
         logging.info('genotype = %s', genotype)
-        logging.info('time for 100 inferences on train arch = {} (cpu/gpu)'.format(my_utils.profile_arch(model)))
+        logging.info('time for 100 inferences on train arch = {} (cpu/gpu)'.format(
+            my_utils.profile_arch(model, args.save, epoch)))
 
 
 def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, epoch, arch_criterion):
