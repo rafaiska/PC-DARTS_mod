@@ -159,7 +159,9 @@ def profile_arch(hyper_network):
         return torch.autograd.Variable(r_i)
     network = NetworkCIFAR(36, 10, 20, False, hyper_network.genotype()).cuda()
     network.drop_path_prob = 0.0
-    with torch.autograd.profiler.profile() as prof:
-        for _ in range(100):
-            network(make_random_input())
+    with torch.cuda.profiler.profile():
+        network(make_random_input())  # Warmup CUDA memory allocator and profiler
+        with torch.autograd.profiler.emit_nvtx() as prof:
+            for _ in range(100):
+                network(make_random_input())
     return prof.total_average().cpu_time_total, prof.total_average().cuda_time_total
