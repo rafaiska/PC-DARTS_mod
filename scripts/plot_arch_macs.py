@@ -26,7 +26,7 @@ def get_macs(network):
 def main():
     assert type(genotypes.M1) == genotypes.Genotype
     log = {}
-    for arch_id in [1, 2, 3, *list(range(5, 18)), *list(range(19, 43))]:
+    for arch_id in [1, 2, 3, *list(range(5, 18)), *list(range(19, 54))]:
         arch_id_str = 'M{}'.format(arch_id)
         print('Profiling arch {}'.format(arch_id_str))
         network = NetworkCIFAR(36, 10, 20, False, eval('genotypes.{}'.format(arch_id_str))).cuda()
