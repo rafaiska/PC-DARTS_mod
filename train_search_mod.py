@@ -89,16 +89,15 @@ def main():
     logging.info('gpu device = %d' % args.gpu)
     logging.info("args = %s", args)
 
-    arch_criterion = None
+    oracle = None
     if args.custom_loss:
         oracle = OpPerformanceOracle()
         oracle.set_weights_from_macs()
         oracle.replace_zero_weights()
         oracle.setup_counter(32, 32, 20, 36)
-        arch_criterion = CustomLoss(oracle=oracle, closs_w=args.c_loss_w)
-    criterion = nn.CrossEntropyLoss()
+    criterion = CustomLoss(oracle=oracle, closs_w=args.c_loss_w)
     criterion = criterion.cuda()
-    model = Network(args.init_channels, CIFAR_CLASSES, args.layers, arch_criterion if arch_criterion else criterion)
+    model = Network(args.init_channels, CIFAR_CLASSES, args.layers, criterion)
     model = model.cuda()
     logging.info("param size = %fMB", utils.count_parameters_in_MB(model))
     if args.load_warmup:
@@ -144,8 +143,7 @@ def main():
         # print(F.softmax(model.alphas_reduce, dim=-1))
 
         # training
-        train_acc, train_obj = train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, epoch,
-                                     arch_criterion)
+        train_acc, train_obj = train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, epoch)
         logging.info('train_acc %f', train_acc)
         logging.info('ALPHAS NORMAL: {}'.format(F.softmax(model.alphas_normal, dim=-1)))
         logging.info('ALPHAS REDUCE: {}'.format(F.softmax(model.alphas_normal, dim=-1)))
@@ -162,14 +160,14 @@ def main():
             my_utils.profile_arch(model, args.save, epoch)))
 
 
-def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, epoch, arch_criterion):
+def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, epoch):
     objs = utils.AvgrageMeter()
     top1 = utils.AvgrageMeter()
     top5 = utils.AvgrageMeter()
 
     for step, (input, target) in enumerate(train_queue):
         if args.custom_loss:
-            arch_criterion.update_network_genotype_info(model)
+            criterion.update_network_genotype_info(model)
         model.train()
         n = input.size(0)
         input = Variable(input, requires_grad=False).cuda()
@@ -186,7 +184,7 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, 
         target_search = Variable(target_search, requires_grad=False).cuda(async=True)
 
         if epoch == 20:
-            arch_criterion.enable_closs()
+            criterion.enable_closs()
         if epoch >= 15:
             architect.step(input, target, input_search, target_search, lr, optimizer, unrolled=args.unrolled)
 
@@ -203,7 +201,7 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr, 
         top1.update(prec1.data[0], n)
         top5.update(prec5.data[0], n)
         if args.custom_loss:
-            macs = arch_criterion.get_current_macs()
+            macs = criterion.get_current_macs()
         else:
             macs = FPOpCounter.get_macs_from_model(model)
 
