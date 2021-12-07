@@ -4,7 +4,7 @@ QUEUE_FILE="${HOME}/pc_darts_queue.txt"
 LOCK_DIR=/tmp/pc_darts_queue.lock
 PC_DARTS_COMMAND=""
 
-function fetch_next_cmd() {
+function fetch_next_cmd {
   while ! mkdir $LOCK_DIR 2>/dev/null; do
     sleep 1000
   done

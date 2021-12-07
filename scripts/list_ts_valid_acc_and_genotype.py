@@ -1,10 +1,12 @@
 #!/usr/bin/env python
-import os
-import sys
 import tarfile
 
+from scripts.arch_data import ArchDataCollection
 
-def get_data(fp):
+EXP_DIR = '/home/rafael/Projetos/msc-rafael-cortez-sanchez/labbook/results'
+
+
+def get_best_va_and_geno(fp):
     best = 0.0
     geno = None
     for line in fp:
@@ -16,17 +18,34 @@ def get_data(fp):
     return best, geno
 
 
+def extract_from_train_search(train_search_id):
+    ts_f = tarfile.open('{}/{}.tar.gz'.format(EXP_DIR, train_search_id))
+    ts_f.extractall('/tmp/{}'.format(train_search_id))
+    with open('/tmp/{}/log.txt'.format(train_search_id), 'r') as fp:
+        valid_acc, genotype = get_best_va_and_geno(fp)
+    return valid_acc, genotype
+
+
+def extract_from_train(train_id):
+    if not train_id:
+        return None
+    ts_f = tarfile.open('{}/{}.tar.gz'.format(EXP_DIR, train_id))
+    ts_f.extractall('/tmp/{}'.format(train_id))
+    with open('/tmp/{}/log.txt'.format(train_id), 'r') as fp:
+        valid_acc, genotype = get_best_va_and_geno(fp)
+    return valid_acc
+
+
 def main():
-    exp_dir = sys.argv[1]
-    filenames = list(filter(lambda fn: 'search' in fn, os.listdir(exp_dir)))
-    filenames.sort()
-    for fn in filenames:
-        exp_id = fn[:-7]
-        tf = tarfile.open('{}/{}'.format(exp_dir, fn))
-        tf.extractall('/tmp/{}'.format(exp_id))
-        with open('/tmp/{}/log.txt'.format(fn[:-7]), 'r') as fp:
-            valid_acc, genotype = get_data(fp)
-            print('{}, {}, {}'.format(exp_id, valid_acc, genotype))
+    arch_data_collection = ArchDataCollection()
+    arch_data_collection.load()
+    archs = arch_data_collection.archs
+    for a_id in archs:
+        ts_id = archs[a_id].train_search_id
+        t_id = archs[a_id].best_train_id
+        archs[a_id].super_model_acc, archs[a_id].genotype_txt = extract_from_train_search(ts_id)
+        archs[a_id].model_acc = extract_from_train(t_id)
+        arch_data_collection.save()
 
 
 if __name__ == '__main__':
