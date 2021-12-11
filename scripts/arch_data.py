@@ -98,10 +98,10 @@ def create_update_arch_collection():
     arch_c.add_arch('M42', 'search-EXP-20211118-211000', '')
     arch_c.add_arch('M43', 'search-EXP-20211122-124041', '')
     arch_c.add_arch('M44', 'search-EXP-20211122-124108', '')
-    arch_c.add_arch('M45', 'search-EXP-20211123-144344', '')
-    arch_c.add_arch('M46', 'search-EXP-20211123-144732', '')
-    arch_c.add_arch('M47', 'search-EXP-20211124-021521', '')
-    arch_c.add_arch('M48', 'search-EXP-20211124-094008', '')
+    arch_c.add_arch('M45', 'search-EXP-20211123-144344', 'eval-EXP-20211208-022915')
+    arch_c.add_arch('M46', 'search-EXP-20211123-144732', 'eval-EXP-20211208-084129')
+    arch_c.add_arch('M47', 'search-EXP-20211124-021521', 'eval-EXP-20211208-151703')
+    arch_c.add_arch('M48', 'search-EXP-20211124-094008', 'eval-EXP-20211209-073810')
     arch_c.add_arch('M49', 'search-EXP-20211124-113043', '')
     arch_c.add_arch('M50', 'search-EXP-20211124-215136', '')
     arch_c.add_arch('M51', 'search-EXP-20211124-215518', '')
@@ -109,10 +109,40 @@ def create_update_arch_collection():
     arch_c.add_arch('M53', 'search-EXP-20211125-101656', '')
     arch_c.add_arch('M54', 'search-EXP-20211125-200349', '')
     arch_c.add_arch('M55', 'search-EXP-20211125-200624', '')
-    arch_c.add_arch('M56', 'search-EXP-20211129-161051', '')
-    arch_c.add_arch('M57', 'search-EXP-20211129-161227', '')
+    arch_c.add_arch('M56', 'search-EXP-20211129-161051', 'eval-EXP-20211201-111607')
+    arch_c.add_arch('M57', 'search-EXP-20211129-161227', 'eval-EXP-20211201-111005')
     arch_c.add_arch('M58', 'search-EXP-20211130-093027', '')
     arch_c.add_arch('M59', 'search-EXP-20211130-094257', '')
     arch_c.add_arch('M60', 'search-EXP-20211130-191429', '')
     arch_c.add_arch('M61', 'search-EXP-20211130-191926', '')
     arch_c.save()
+
+
+def update_arch_closs_w():
+    arch_c = ArchDataCollection()
+    arch_c.load()
+    arch_c.archs['M45'].closs_w = 2e-7
+    arch_c.archs['M46'].closs_w = 1e-7
+    arch_c.archs['M47'].closs_w = 5e-8
+    arch_c.archs['M48'].closs_w = 2e-8
+    arch_c.archs['M49'].closs_w = 1e-8
+    arch_c.archs['M50'].closs_w = 5e-9
+    arch_c.archs['M51'].closs_w = 2e-9
+    arch_c.archs['M52'].closs_w = 1e-9
+    arch_c.archs['M53'].closs_w = 5e-10
+    arch_c.archs['M54'].closs_w = 6.67e-8
+    arch_c.archs['M55'].closs_w = 8.33e-8
+    arch_c.archs['M56'].closs_w = 5e-8
+    arch_c.archs['M57'].closs_w = 2e-8
+    arch_c.archs['M58'].closs_w = 1e-8
+    arch_c.archs['M59'].closs_w = 5e-9
+    arch_c.archs['M60'].closs_w = 2e-9
+    arch_c.archs['M61'].closs_w = 1e-9
+    arch_c.save()
+    w_instance_qt = {}
+    for a in arch_c.archs.values():
+        if hasattr(a, 'closs_w'):
+            if a.closs_w not in w_instance_qt:
+                w_instance_qt[a.closs_w] = 0
+            w_instance_qt[a.closs_w] += 1
+    print(w_instance_qt)

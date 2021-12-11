@@ -45,6 +45,7 @@ def main():
         t_id = archs[a_id].best_train_id
         archs[a_id].super_model_acc, archs[a_id].genotype_txt = extract_from_train_search(ts_id)
         archs[a_id].model_acc = extract_from_train(t_id)
+        print(a_id, archs[a_id].super_model_acc, archs[a_id].model_acc, archs[a_id].genotype_txt)
         arch_data_collection.save()
 
 
