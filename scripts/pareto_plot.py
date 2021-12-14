@@ -6,10 +6,13 @@ from scripts.arch_data import ArchDataCollection
 def plot_acc_vs_macs(collection):
     plot_data_1 = {}
     plot_data_2 = {}
+    plot_data_3 = {}
     for a_id in collection.archs:
         n = int(a_id[1:])
         if collection.archs[a_id].model_acc is not None:
-            if n < 45:
+            if n <= 5:
+                plot_data_3[a_id] = (collection.archs[a_id].model_acc, collection.archs[a_id].macs_count)
+            elif 5 < n < 45:
                 plot_data_1[a_id] = (collection.archs[a_id].model_acc, collection.archs[a_id].macs_count)
             else:
                 plot_data_2[a_id] = (collection.archs[a_id].model_acc, collection.archs[a_id].macs_count)
@@ -21,11 +24,14 @@ def plot_acc_vs_macs(collection):
                marker='^')
     ax.scatter([plot_data_2[a][0] for a in plot_data_2], [plot_data_2[a][1] for a in plot_data_2], color='red',
                marker='o')
-    for plot_data in [plot_data_1, plot_data_2]:
+    ax.scatter([plot_data_3[a][0] for a in plot_data_3], [plot_data_3[a][1] for a in plot_data_3], color='blue',
+               marker='s')
+    for plot_data in [plot_data_1, plot_data_2, plot_data_3]:
         for a in plot_data:
             x = plot_data[a][0]
             y = plot_data[a][1]
-            plt.text(x=x, y=y, s=a)
+            s = '{}, w={}'.format(a, collection.archs[a].closs_w) if hasattr(collection.archs[a], "closs_w") else a
+            plt.text(x=x, y=y, s=s, fontsize=5)
     plt.savefig('pareto.svg')
 
 

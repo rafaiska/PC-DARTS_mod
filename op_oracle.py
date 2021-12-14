@@ -15,14 +15,17 @@ REDUCE_IMPORTANCE = 2.0 / 20.0
 MAX_OP_LOSS = torch.autograd.Variable(torch.cuda.FloatTensor([3.0]))
 PYTHON_3 = sys.version[0] == '3'
 
-N_INPUTS = [torch.randn(1, 3, 2, 2).cuda(),
-            torch.randn(1, 3, 4, 4).cuda(),
-            torch.randn(1, 3, 8, 8).cuda(),
-            torch.randn(1, 3, 16, 16).cuda(),
-            torch.randn(1, 3, 32, 32).cuda(),
-            torch.randn(1, 3, 64, 64).cuda(),
-            torch.randn(1, 3, 128, 128).cuda(),
-            ]
+
+def get_n_inputs():
+    n_inputs = [torch.randn(1, 3, 2, 2).cuda(),
+                torch.randn(1, 3, 4, 4).cuda(),
+                torch.randn(1, 3, 8, 8).cuda(),
+                torch.randn(1, 3, 16, 16).cuda(),
+                torch.randn(1, 3, 32, 32).cuda(),
+                torch.randn(1, 3, 64, 64).cuda(),
+                torch.randn(1, 3, 128, 128).cuda(),
+                ]
+    return n_inputs
 
 
 class FPOpCounter:
@@ -235,7 +238,7 @@ class OpPerformanceOracle:
     def _compute_average_macs(self, operation_name):
         op_constructor = OPS[operation_name]
         macs_list = []
-        for i in N_INPUTS:
+        for i in get_n_inputs():
             op = op_constructor(i.shape[1], 1, True).cuda()
             macs, _ = thop.profile(op, inputs=(torch.autograd.Variable(i),), verbose=False)
             macs_list.append(macs)
@@ -253,6 +256,7 @@ class OpPerformanceOracle:
         Adjust weights to avoid null weights on cheap, non convolutional operators
         :return: None
         """
+
         def _is_zero(n):
             return 0.1 > n >= 0.0
 
