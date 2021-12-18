@@ -1,8 +1,26 @@
 import pickle
+from enum import Enum
 from os.path import expanduser
 
 
+class CLossV(Enum):
+    ORIGINAL = 1  # Original PC-DARTS Loss Function (pure Cross-Entropy Loss)
+    LEGACY = 2  # Experiments prior to differentiable custom loss
+    D_LOSS_V1 = 3  # op_oracle with MAC based weights, differentiable op_loss v1
+    D_LOSS_V2 = 4  # op_oracle with MAC based weights, differentiable op_loss v2 (with reduce importance)
+    D_LOSS_V3 = 5  # op_oracle with MAC based weights, differentiable op_loss v3 (adjustment on zero MACS operators)
+    D_LOSS_V4 = 6  # Same as M55, but without using different criterions for arch and regular optimizers
+
+
+def quotes(s):
+    return '"' + s + '"'
+
+
 class ArchData:
+    ARCH_CSV_HEADER = ['arch_id', 'train_search_id', 'best_train_id',
+                       'super_model_acc', 'model_acc', 'time_for_100_inf',
+                       'macs_count', 'genotype_txt', 'closs_v', 'closs_w']
+
     def __init__(self):
         self.arch_id = None
         self.train_search_id = None
@@ -13,7 +31,15 @@ class ArchData:
         self.macs_count = None
         self.genotype_txt = None
         self.closs_w = None
+        self.closs_v = None
         self.git_hash = None
+
+    def __str__(self):
+        return quotes('","'.join([str(self.__getattribute__(k)) for k in ArchData.ARCH_CSV_HEADER]))
+
+    @staticmethod
+    def get_csv_header():
+        return quotes('","'.join(ArchData.ARCH_CSV_HEADER))
 
 
 class ArchDataCollection:
@@ -32,11 +58,12 @@ class ArchDataCollection:
         except FileNotFoundError:
             self.archs = {}
 
-    def add_arch(self, arch_id, train_search_id, best_train_id=None):
+    def add_arch(self, arch_id, train_search_id, best_train_id=None, closs_v=None):
         if arch_id not in self.archs:
             a = ArchData()
             a.arch_id = arch_id
             a.train_search_id = train_search_id
+            a.closs_v = closs_v
             self.archs[arch_id] = a
         else:
             a = self.archs[arch_id]
@@ -44,14 +71,9 @@ class ArchDataCollection:
 
     def csv_dump(self, path):
         with open(path, 'w') as fp:
-            fp.write('{}, {}, {}, {}, {}, {}, {}, {}\n'.format('arch_id', 'train_search_id', 'best_train_id',
-                                                               'super_model_acc', 'model_acc', 'time_for_100_inf',
-                                                               'macs_count', 'genotype_txt'))
+            fp.write('{}\n'.format(ArchData.get_csv_header()))
             for arch in self.archs.values():
-                fp.write('{}, {}, {}, {}, {}, {}, {}, "{}"\n'.format(arch.arch_id, arch.train_search_id,
-                                                                     arch.best_train_id, arch.super_model_acc,
-                                                                     arch.model_acc, arch.time_for_100_inf,
-                                                                     arch.macs_count, arch.genotype_txt))
+                fp.write('{}\n'.format(str(arch)))
 
 
 def create_update_arch_collection():
@@ -106,43 +128,151 @@ def create_update_arch_collection():
     arch_c.add_arch('M50', 'search-EXP-20211124-215136', 'eval-EXP-20211210-072834')
     arch_c.add_arch('M51', 'search-EXP-20211124-215518', 'eval-EXP-20211210-203424')
     arch_c.add_arch('M52', 'search-EXP-20211125-101248', 'eval-EXP-20211211-132059')
-    arch_c.add_arch('M53', 'search-EXP-20211125-101656', '')
-    arch_c.add_arch('M54', 'search-EXP-20211125-200349', '')
-    arch_c.add_arch('M55', 'search-EXP-20211125-200624', '')
+    arch_c.add_arch('M53', 'search-EXP-20211125-101656', 'eval-EXP-20211212-042820')
+    arch_c.add_arch('M54', 'search-EXP-20211125-200349', 'eval-EXP-20211213-004956')
+    arch_c.add_arch('M55', 'search-EXP-20211125-200624', 'eval-EXP-20211213-105229')
     arch_c.add_arch('M56', 'search-EXP-20211129-161051', 'eval-EXP-20211201-111607')
     arch_c.add_arch('M57', 'search-EXP-20211129-161227', 'eval-EXP-20211201-111005')
-    arch_c.add_arch('M58', 'search-EXP-20211130-093027', '')
+    arch_c.add_arch('M58', 'search-EXP-20211130-093027', 'eval-EXP-20211213-163128')
     arch_c.add_arch('M59', 'search-EXP-20211130-094257', '')
-    arch_c.add_arch('M60', 'search-EXP-20211130-191429', '')
+    arch_c.add_arch('M60', 'search-EXP-20211130-191429', 'eval-EXP-20211214-212312')
     arch_c.add_arch('M61', 'search-EXP-20211130-191926', '')
+    arch_c.add_arch('M62', 'search-EXP-20211213-171055-0', '')
+    arch_c.add_arch('M63', 'search-EXP-20211213-171054-1', '')
+    arch_c.add_arch('M64', 'search-EXP-20211213-171054-3', '')
+    arch_c.add_arch('M65', 'search-EXP-20211214-200624-0', '')
+    arch_c.add_arch('M66', 'search-EXP-20211214-200620-0', '')
+    arch_c.add_arch('M67', 'search-EXP-20211214-200618-1', '')
+    arch_c.add_arch('M68', 'search-EXP-20211214-200620-2', '')
+    arch_c.add_arch('M69', 'search-EXP-20211214-200623-2', '')
+    arch_c.add_arch('M70', 'search-EXP-20211214-200622-3', '')
+    arch_c.add_arch('M71', 'search-EXP-20211214-200620-3', '')
+    arch_c.add_arch('M72', 'search-EXP-20211216-051706-1', '')
+    arch_c.add_arch('M73', 'search-EXP-20211216-051705-2', '')
+    arch_c.add_arch('M74', 'search-EXP-20211216-051658-2', '')
+    arch_c.add_arch('M75', 'search-EXP-20211216-051706-3', '')
+    arch_c.add_arch('M76', 'search-EXP-20211216-051706-0', '')
+    arch_c.add_arch('M77', 'search-EXP-20211216-170404-0', '', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M78', 'search-EXP-20211216-170410-1', '', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M79', 'search-EXP-20211216-170405-1', '', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M80', 'search-EXP-20211216-170404-2', '', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M81', 'search-EXP-20211216-170409-2', '', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M82', 'search-EXP-20211216-170407-3', '', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M83', 'search-EXP-20211216-170404-3', '', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M84', 'search-EXP-20211217-113311-0', '', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M85', 'search-EXP-20211217-113327-0', '', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M86', 'search-EXP-20211217-113328-1', '', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M87', 'search-EXP-20211217-113312-1', '', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M88', 'search-EXP-20211217-113310-2', '', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M89', 'search-EXP-20211217-113322-2', '', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M90', 'search-EXP-20211217-113311-3', '', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M91', 'search-EXP-20211217-113326-3', '', CLossV.D_LOSS_V4)
     arch_c.save()
 
 
-def update_arch_closs_w():
+def genotype_correction():
     arch_c = ArchDataCollection()
     arch_c.load()
-    arch_c.archs['M45'].closs_w = 2e-7
-    arch_c.archs['M46'].closs_w = 1e-7
-    arch_c.archs['M47'].closs_w = 5e-8
-    arch_c.archs['M48'].closs_w = 2e-8
-    arch_c.archs['M49'].closs_w = 1e-8
-    arch_c.archs['M50'].closs_w = 5e-9
-    arch_c.archs['M51'].closs_w = 2e-9
-    arch_c.archs['M52'].closs_w = 1e-9
-    arch_c.archs['M53'].closs_w = 5e-10
-    arch_c.archs['M54'].closs_w = 6.67e-8
-    arch_c.archs['M55'].closs_w = 8.33e-8
-    arch_c.archs['M56'].closs_w = 5e-8
-    arch_c.archs['M57'].closs_w = 2e-8
-    arch_c.archs['M58'].closs_w = 1e-8
-    arch_c.archs['M59'].closs_w = 5e-9
-    arch_c.archs['M60'].closs_w = 2e-9
-    arch_c.archs['M61'].closs_w = 1e-9
+    arch_c.archs[
+        'M2'].genotype_txt = "Genotype(normal=[('sep_conv_5x5', 1), ('dil_conv_5x5', 0), ('sep_conv_3x3', 2), ('sep_conv_5x5', 1), ('avg_pool_3x3', 0), ('dil_conv_3x3', 2), ('sep_conv_3x3', 0), ('dil_conv_3x3', 1)], normal_concat=[2, 3, 4, 5], reduce=[('avg_pool_3x3', 1), ('sep_conv_3x3', 0), ('dil_conv_3x3', 1), ('sep_conv_3x3', 2), ('avg_pool_3x3', 0), ('max_pool_3x3', 3), ('max_pool_3x3', 0), ('dil_conv_3x3', 2)], reduce_concat=[2, 3, 4, 5])"
+    arch_c.archs[
+        'M3'].genotype_txt = "Genotype(normal=[('sep_conv_3x3', 0), ('dil_conv_5x5', 1), ('skip_connect', 2), ('skip_connect', 0), ('dil_conv_3x3', 2), ('dil_conv_3x3', 3), ('dil_conv_5x5', 4), ('sep_conv_3x3', 0)], normal_concat=[2, 3, 4, 5], reduce=[('avg_pool_3x3', 1), ('dil_conv_5x5', 0), ('sep_conv_3x3', 2), ('max_pool_3x3', 0), ('dil_conv_3x3', 1), ('avg_pool_3x3', 3), ('dil_conv_3x3', 4), ('avg_pool_3x3', 2)], reduce_concat=[2, 3, 4, 5])"
+    arch_c.archs[
+        'M5'].genotype_txt = "Genotype(normal=[('dil_conv_3x3', 1), ('avg_pool_3x3', 0), ('dil_conv_5x5', 2), ('dil_conv_3x3', 0), ('avg_pool_3x3', 3), ('max_pool_3x3', 0), ('dil_conv_5x5', 2), ('skip_connect', 4)], normal_concat=range(2, 6), reduce=[('max_pool_3x3', 1), ('sep_conv_5x5', 0), ('avg_pool_3x3', 2), ('skip_connect', 0), ('max_pool_3x3', 3), ('skip_connect', 0), ('avg_pool_3x3', 4), ('avg_pool_3x3', 1)], reduce_concat=range(2, 6))"
+    arch_c.archs[
+        'M9'].genotype_txt = "Genotype(normal=[('avg_pool_3x3', 1), ('dil_conv_5x5', 0), ('max_pool_3x3', 2), ('avg_pool_3x3', 0), ('dil_conv_3x3', 0), ('max_pool_3x3', 1), ('avg_pool_3x3', 4), ('skip_connect', 2)], normal_concat=[2, 3, 4, 5], reduce=[('avg_pool_3x3', 0), ('sep_conv_5x5', 1), ('avg_pool_3x3', 0), ('avg_pool_3x3', 1), ('avg_pool_3x3', 3), ('avg_pool_3x3', 1), ('avg_pool_3x3', 4), ('sep_conv_5x5', 3)], reduce_concat=[2, 3, 4, 5])"
     arch_c.save()
-    w_instance_qt = {}
-    for a in arch_c.archs.values():
-        if hasattr(a, 'closs_w'):
-            if a.closs_w not in w_instance_qt:
-                w_instance_qt[a.closs_w] = 0
-            w_instance_qt[a.closs_w] += 1
-    print(w_instance_qt)
+
+
+def add_closs_v():
+    arch_c = ArchDataCollection()
+    arch_c.load()
+    # arch_c.archs['M1'].closs_v = CLossV.ORIGINAL
+    arch_c.archs['M2'].closs_v = CLossV.ORIGINAL
+    arch_c.archs['M3'].closs_v = CLossV.ORIGINAL
+    arch_c.archs['M5'].closs_v = CLossV.ORIGINAL
+
+    arch_c.archs['M6'].closs_v = CLossV.LEGACY
+    arch_c.archs['M7'].closs_v = CLossV.LEGACY
+    arch_c.archs['M8'].closs_v = CLossV.LEGACY
+    arch_c.archs['M9'].closs_v = CLossV.LEGACY
+    arch_c.archs['M10'].closs_v = CLossV.LEGACY
+    arch_c.archs['M11'].closs_v = CLossV.LEGACY
+    arch_c.archs['M12'].closs_v = CLossV.LEGACY
+    arch_c.archs['M13'].closs_v = CLossV.LEGACY
+    arch_c.archs['M14'].closs_v = CLossV.LEGACY
+
+    arch_c.archs['M15'].closs_v = CLossV.ORIGINAL
+
+    arch_c.archs['M16'].closs_v = CLossV.LEGACY
+
+    arch_c.archs['M17'].closs_v = CLossV.ORIGINAL
+    arch_c.archs['M19'].closs_v = CLossV.ORIGINAL
+
+    arch_c.archs['M20'].closs_v = CLossV.LEGACY
+
+    arch_c.archs['M21'].closs_v = CLossV.ORIGINAL
+
+    arch_c.archs['M22'].closs_v = CLossV.LEGACY
+
+    arch_c.archs['M23'].closs_v = CLossV.ORIGINAL
+
+    arch_c.archs['M24'].closs_v = CLossV.LEGACY
+    arch_c.archs['M25'].closs_v = CLossV.LEGACY
+    arch_c.archs['M26'].closs_v = CLossV.LEGACY
+    arch_c.archs['M27'].closs_v = CLossV.LEGACY
+    arch_c.archs['M28'].closs_v = CLossV.LEGACY
+    arch_c.archs['M29'].closs_v = CLossV.LEGACY
+    arch_c.archs['M30'].closs_v = CLossV.LEGACY
+    arch_c.archs['M31'].closs_v = CLossV.LEGACY
+    arch_c.archs['M32'].closs_v = CLossV.LEGACY
+    arch_c.archs['M33'].closs_v = CLossV.LEGACY
+    arch_c.archs['M34'].closs_v = CLossV.LEGACY
+    arch_c.archs['M35'].closs_v = CLossV.LEGACY
+    arch_c.archs['M36'].closs_v = CLossV.LEGACY
+
+    arch_c.archs['M37'].closs_v = CLossV.D_LOSS_V1
+    arch_c.archs['M38'].closs_v = CLossV.D_LOSS_V1
+    arch_c.archs['M39'].closs_v = CLossV.D_LOSS_V1
+    arch_c.archs['M40'].closs_v = CLossV.D_LOSS_V1
+
+    arch_c.archs['M41'].closs_v = CLossV.D_LOSS_V2
+    arch_c.archs['M42'].closs_v = CLossV.D_LOSS_V2
+    arch_c.archs['M43'].closs_v = CLossV.D_LOSS_V2
+    arch_c.archs['M44'].closs_v = CLossV.D_LOSS_V2
+
+    arch_c.archs['M45'].closs_v = CLossV.D_LOSS_V3
+    arch_c.archs['M46'].closs_v = CLossV.D_LOSS_V3
+    arch_c.archs['M47'].closs_v = CLossV.D_LOSS_V3
+    arch_c.archs['M48'].closs_v = CLossV.D_LOSS_V3
+    arch_c.archs['M49'].closs_v = CLossV.D_LOSS_V3
+    arch_c.archs['M50'].closs_v = CLossV.D_LOSS_V3
+    arch_c.archs['M51'].closs_v = CLossV.D_LOSS_V3
+    arch_c.archs['M52'].closs_v = CLossV.D_LOSS_V3
+    arch_c.archs['M53'].closs_v = CLossV.D_LOSS_V3
+    arch_c.archs['M54'].closs_v = CLossV.D_LOSS_V3
+    arch_c.archs['M55'].closs_v = CLossV.D_LOSS_V3
+    arch_c.archs['M56'].closs_v = CLossV.D_LOSS_V4
+    arch_c.archs['M57'].closs_v = CLossV.D_LOSS_V4
+    arch_c.archs['M58'].closs_v = CLossV.D_LOSS_V4
+    arch_c.archs['M59'].closs_v = CLossV.D_LOSS_V4
+    arch_c.archs['M60'].closs_v = CLossV.D_LOSS_V4
+    arch_c.archs['M61'].closs_v = CLossV.D_LOSS_V4
+    arch_c.archs['M62'].closs_v = CLossV.D_LOSS_V4
+    arch_c.archs['M63'].closs_v = CLossV.D_LOSS_V4
+    arch_c.archs['M64'].closs_v = CLossV.D_LOSS_V4
+    arch_c.archs['M65'].closs_v = CLossV.D_LOSS_V4
+    arch_c.archs['M66'].closs_v = CLossV.D_LOSS_V4
+    arch_c.archs['M67'].closs_v = CLossV.D_LOSS_V4
+    arch_c.archs['M68'].closs_v = CLossV.D_LOSS_V4
+    arch_c.archs['M69'].closs_v = CLossV.D_LOSS_V4
+    arch_c.archs['M70'].closs_v = CLossV.D_LOSS_V4
+    arch_c.archs['M71'].closs_v = CLossV.D_LOSS_V4
+
+    arch_c.archs['M72'].closs_v = CLossV.ORIGINAL
+    arch_c.archs['M73'].closs_v = CLossV.ORIGINAL
+    arch_c.archs['M74'].closs_v = CLossV.ORIGINAL
+    arch_c.archs['M75'].closs_v = CLossV.ORIGINAL
+    arch_c.archs['M76'].closs_v = CLossV.ORIGINAL
+
+    arch_c.save()

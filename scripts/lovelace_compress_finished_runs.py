@@ -65,10 +65,9 @@ def find_finished_train_runs():
                 last_epoch, epochs, validated_arch = parse_file(fp)
             completed = last_epoch == epochs - 1
             exp_dir = '{}/{}/PC-DARTS/{}'.format(MOUNT_DIR, worker_dir, exp_id)
-            print(completed, validated_arch, exp_dir)
+            print(completed, last_epoch, validated_arch, exp_dir)
             if completed:
                 make_tarfile('{}/{}.tar.gz'.format(HOME_DIR, exp_id), exp_dir)
-
 
 if __name__ == '__main__':
     find_finished_train_runs()
