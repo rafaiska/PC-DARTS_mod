@@ -133,3 +133,11 @@ dmypy.json
 
 #Dados dos experimentos
 data/
+
+#veessecoude
+.vscode
+
+#ibagens
+*.svg
+*.png
+*.pdf

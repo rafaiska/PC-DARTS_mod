@@ -12,6 +12,11 @@ class CLossV(Enum):
     D_LOSS_V4 = 6  # Same as M55, but without using different criterions for arch and regular optimizers
 
 
+class UsedGPU(Enum):
+    SDUMONT_K40 = 1
+    CENAPAD_A100 = 2
+
+
 def quotes(s):
     return '"' + s + '"'
 
@@ -33,6 +38,8 @@ class ArchData:
         self.closs_w = None
         self.closs_v = None
         self.git_hash = None
+        self.train_search_gpu = None
+        self.best_train_gpu = None
 
     def __str__(self):
         return quotes('","'.join([str(self.__getattribute__(k)) for k in ArchData.ARCH_CSV_HEADER]))
@@ -136,7 +143,7 @@ def create_update_arch_collection():
     arch_c.add_arch('M58', 'search-EXP-20211130-093027', 'eval-EXP-20211213-163128')
     arch_c.add_arch('M59', 'search-EXP-20211130-094257', 'eval-EXP-20211222-054906')
     arch_c.add_arch('M60', 'search-EXP-20211130-191429', 'eval-EXP-20211214-212312')
-    arch_c.add_arch('M61', 'search-EXP-20211130-191926', '')
+    arch_c.add_arch('M61', 'search-EXP-20211130-191926', 'eval-EXP-20220117-171813')
     arch_c.add_arch('M62', 'search-EXP-20211213-171055-0', 'eval-EXP-20211222-141731')
     arch_c.add_arch('M63', 'search-EXP-20211213-171054-1', 'eval-EXP-20211222-232025')
     arch_c.add_arch('M64', 'search-EXP-20211213-171054-3', 'eval-EXP-20211223-052635')
@@ -150,9 +157,9 @@ def create_update_arch_collection():
     arch_c.add_arch('M72', 'search-EXP-20211216-051706-1', 'eval-EXP-20211225-053629')
     arch_c.add_arch('M73', 'search-EXP-20211216-051705-2', 'eval-EXP-20211225-105923')
     arch_c.add_arch('M74', 'search-EXP-20211216-051658-2', 'eval-EXP-20211226-055411')
-    arch_c.add_arch('M75', 'search-EXP-20211216-051706-3', '')
+    arch_c.add_arch('M75', 'search-EXP-20211216-051706-3', 'eval-EXP-20220118-230414')
     arch_c.add_arch('M76', 'search-EXP-20211216-051706-0', 'eval-EXP-20211227-074753')
-    arch_c.add_arch('M77', 'search-EXP-20211216-170404-0', '', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M77', 'search-EXP-20211216-170404-0', 'eval-EXP-20220118-231404', CLossV.D_LOSS_V4)
     arch_c.add_arch('M78', 'search-EXP-20211216-170410-1', 'eval-EXP-20211229-234640', CLossV.D_LOSS_V4)
     arch_c.add_arch('M79', 'search-EXP-20211216-170405-1', 'eval-EXP-20211230-061455', CLossV.D_LOSS_V4)
     arch_c.add_arch('M80', 'search-EXP-20211216-170404-2', 'eval-EXP-20211231-162039', CLossV.D_LOSS_V4)
