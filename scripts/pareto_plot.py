@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 
 from scripts.arch_data import ArchDataCollection, CLossV
 
+FIGSIZE = (12, 5)
+
 
 def is_in_pareto_f(a1, plot_data):
     for a2 in plot_data:
@@ -18,7 +20,7 @@ def add_extremities(frontier_elements):
             self.model_acc = model_acc
             self.macs_count = macs_count
 
-    first = DummyArch(93, frontier_elements[0].macs_count)
+    first = DummyArch(89.8, frontier_elements[0].macs_count)
     last = DummyArch(frontier_elements[-1].model_acc, 8e8)
     frontier_elements.insert(0, first)
     frontier_elements.append(last)
@@ -37,7 +39,7 @@ def draw_pareto_frontier(plot_data, ax):
 
 
 def plot_acc_vs_macs(collection):
-    fig = plt.figure()
+    fig = plt.figure(figsize=FIGSIZE)
     ax = fig.add_subplot(111)
     plt.xlabel('Model Accuracy (from train.py)')
     plt.ylabel('# MACS')
@@ -55,14 +57,12 @@ def plot_acc_vs_macs(collection):
             s += ', w={}'.format(a.closs_w) if hasattr(a, "closs_w") and a.closs_w else ''
             plt.text(x=x, y=y, s=s, fontsize=3)
     ax.legend()
-    plt.savefig('pareto.svg')
+    plt.savefig('pareto.pdf')
 
 
-def plot_acc_vs_w(collection):
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    plt.xlabel('Custom Loss Weight \"w\"')
-    plt.ylabel('Model Accuracy (from train.py)')
+def plot_acc_vs_w(collection, ax):
+    ax.set_xlabel('Custom Loss Weight \"w\"')
+    ax.set_ylabel('Model Accuracy (from train.py)')
     for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V3, CLossV.D_LOSS_V4)}.items():
         plot_data = list(
             filter(lambda a: a.model_acc is not None and a.closs_w is not None and a.closs_v in clv_group,
@@ -72,16 +72,12 @@ def plot_acc_vs_w(collection):
             x = a.closs_w
             y = a.model_acc
             s = a.arch_id
-            plt.text(x=x, y=y, s=s, fontsize=6)
-    ax.legend()
-    plt.savefig('acc_vs_w.svg')
+            ax.text(x=x, y=y, s=s, fontsize=10)
 
 
-def plot_macs_vs_w(collection):
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    plt.xlabel('Custom Loss Weight \"w\"')
-    plt.ylabel('# MACS')
+def plot_macs_vs_w(collection, ax):
+    ax.set_xlabel('Custom Loss Weight \"w\"')
+    ax.set_ylabel('# MACS')
     for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V3, CLossV.D_LOSS_V4)}.items():
         plot_data = list(
             filter(lambda a: a.macs_count is not None and a.closs_w is not None and a.closs_v in clv_group,
@@ -91,14 +87,26 @@ def plot_macs_vs_w(collection):
             x = a.closs_w
             y = a.macs_count
             s = a.arch_id
-            plt.text(x=x, y=y, s=s, fontsize=6)
-    ax.legend()
-    plt.savefig('macs_vs_w.svg')
+            ax.text(x=x, y=y, s=s, fontsize=10)
+
+
+def configure_multiplot():
+    fig = plt.figure(figsize=FIGSIZE)
+    acc_w_ax = fig.add_subplot(211)
+    macs_w_ax = fig.add_subplot(212)
+    return fig, acc_w_ax, macs_w_ax
+
+
+def plot_data_vs_w():
+    fig, acc_w_ax, macs_w_ax = configure_multiplot()
+    plot_acc_vs_w(arch_collection, acc_w_ax)
+    plot_macs_vs_w(arch_collection, macs_w_ax)
+    plt.subplots_adjust(hspace=0.3)
+    plt.savefig('data_vs_w.pdf')
 
 
 if __name__ == '__main__':
     arch_collection = ArchDataCollection()
     arch_collection.load()
     plot_acc_vs_macs(arch_collection)
-    plot_acc_vs_w(arch_collection)
-    plot_macs_vs_w(arch_collection)
+    plot_data_vs_w()
