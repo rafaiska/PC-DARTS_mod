@@ -174,6 +174,18 @@ def create_update_arch_collection():
     arch_c.add_arch('M89', 'search-EXP-20211217-113322-2', 'eval-EXP-20220103-235822', CLossV.D_LOSS_V4)
     arch_c.add_arch('M90', 'search-EXP-20211217-113311-3', 'eval-EXP-20220104-021844', CLossV.D_LOSS_V4)
     arch_c.add_arch('M91', 'search-EXP-20211217-113326-3', 'eval-EXP-20220104-075957', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M92', 'search-EXP-20220314-115704-0', 'eval-EXP-20220315-095026', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M93', 'search-EXP-20220314-115705-1', 'eval-EXP-20220315-224925', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M94', 'search-EXP-20220314-115704-2', 'eval-EXP-20220316-103156', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M95', 'search-EXP-20220314-115704-3', 'eval-EXP-20220316-181950', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M96', 'search-EXP-20220319-185257-0', '', CLossV.ORIGINAL)
+    arch_c.add_arch('M97', 'search-EXP-20220319-185244-0', '', CLossV.ORIGINAL)
+    arch_c.add_arch('M98', 'search-EXP-20220319-185258-1', '', CLossV.ORIGINAL)
+    arch_c.add_arch('M99', 'search-EXP-20220319-185244-1', '', CLossV.ORIGINAL)
+    arch_c.add_arch('M100', 'search-EXP-20220319-185258-2', '', CLossV.ORIGINAL)
+    arch_c.add_arch('M101', 'search-EXP-20220319-185244-2', '', CLossV.ORIGINAL)
+    arch_c.add_arch('M102', 'search-EXP-20220319-185257-3', '', CLossV.ORIGINAL)
+    arch_c.add_arch('M103', 'search-EXP-20220319-185244-3', '', CLossV.ORIGINAL)
     arch_c.save()
 
 

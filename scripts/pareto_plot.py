@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
 from scripts.arch_data import ArchDataCollection, CLossV
 
@@ -26,7 +27,7 @@ def add_extremities(frontier_elements):
     frontier_elements.append(last)
 
 
-def draw_pareto_frontier(plot_data, ax):
+def draw_pareto_frontier(plot_data, ax, color):
     frontier_elements = []
     for a in plot_data:
         if is_in_pareto_f(a, plot_data):
@@ -35,7 +36,7 @@ def draw_pareto_frontier(plot_data, ax):
     add_extremities(frontier_elements)
     ax.plot(
         [a.model_acc for a in frontier_elements], [a.macs_count for a in frontier_elements],
-        linestyle='dashed')
+        linestyle='dashed', color=color)
 
 
 def plot_acc_vs_macs(collection):
@@ -48,16 +49,39 @@ def plot_acc_vs_macs(collection):
         plot_data = list(
             filter(lambda a: a.model_acc is not None and a.macs_count is not None and a.closs_v in clv_group,
                    collection.archs.values()))
-        ax.scatter([a.model_acc for a in plot_data], [a.macs_count for a in plot_data], label=g_name)
-        draw_pareto_frontier(plot_data, ax)
+        ax.scatter([a.model_acc for a in plot_data], [a.macs_count for a in plot_data],
+                   c=[a.closs_w for a in plot_data] if g_name == 'Diff. Loss' else None, cmap='Reds', label=g_name)
+        draw_pareto_frontier(plot_data, ax, 'blue' if g_name == 'Original' else 'red')
         for a in plot_data:
             x = a.model_acc
             y = a.macs_count
             s = a.arch_id
-            s += ', w={}'.format(a.closs_w) if hasattr(a, "closs_w") and a.closs_w else ''
+            # s += ', w={}'.format(a.closs_w) if hasattr(a, "closs_w") and a.closs_w else ''
             plt.text(x=x, y=y, s=s, fontsize=3)
     ax.legend()
-    plt.savefig('pareto.pdf')
+    plt.savefig('pareto.pdf', bbox_inches='tight')
+
+
+def plot_acc_vs_macs_wo_pareto(collection):
+    fig = plt.figure(figsize=FIGSIZE)
+    ax = fig.add_subplot(111)
+    plt.xlabel('Model Accuracy (from train.py)')
+    plt.ylabel('# MACS')
+    for g_name, clv_group in {'Loss-v3': (CLossV.D_LOSS_V3,), 'Loss-v4': (CLossV.D_LOSS_V4,)}.items():
+        plot_data = list(
+            filter(lambda a: a.model_acc is not None and a.macs_count is not None and a.closs_v in clv_group,
+                   collection.archs.values()))
+        ax.scatter([a.model_acc for a in plot_data], [a.macs_count for a in plot_data],
+                   c=[a.closs_w for a in plot_data] if g_name != 'Original' else None,
+                   cmap='Reds' if g_name == 'Loss-v3' else 'Greens', label=g_name)
+        for a in plot_data:
+            x = a.model_acc
+            y = a.macs_count
+            s = a.arch_id
+            plt.text(x=x, y=y, s=s, fontsize=3)
+    plot_exp_regression(collection, ax)
+    ax.legend()
+    plt.savefig('acc_vs_macs_wo_pareto.pdf', bbox_inches='tight')
 
 
 def plot_acc_vs_w(collection, ax):
@@ -97,16 +121,68 @@ def configure_multiplot():
     return fig, acc_w_ax, macs_w_ax
 
 
+def plot_curve(fit, fit_type, ax, x_range):
+    x_v = np.arange(x_range[0], x_range[1], (x_range[1] - x_range[0]) / 100.0)
+    if fit_type == 'log':
+        y = [fit[1] + fit[0] * np.log(x) for x in x_v]
+    elif fit_type == 'linear':
+        y = [fit[1] + fit[0] * x for x in x_v]
+    elif fit_type == 'exp':
+        y = [fit[1] + fit[0] * np.exp(x) for x in x_v]
+    else:
+        raise RuntimeError('Invalid fit type')
+    ax.plot(x_v, y, color='red')
+
+
+def plot_lin_regression(collection, ax):
+    for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V3, CLossV.D_LOSS_V4)}.items():
+        plot_data = list(
+            filter(lambda a: a.model_acc is not None and a.closs_w is not None and a.closs_v in clv_group,
+                   collection.archs.values()))
+        x = [a.closs_w for a in plot_data]
+        y = [a.model_acc for a in plot_data]
+        fit = np.polyfit(x, y, 1)
+        print('Lin fit: {} + {} * x'.format(fit[1], fit[0]))
+        plot_curve(fit, 'linear', ax, (min(x), max(x)))
+
+
+def plot_log_regression(collection, ax):
+    for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V3, CLossV.D_LOSS_V4)}.items():
+        plot_data = list(
+            filter(lambda a: a.macs_count is not None and a.closs_w is not None and a.closs_v in clv_group,
+                   collection.archs.values()))
+        x = [a.closs_w for a in plot_data]
+        y = [a.macs_count for a in plot_data]
+        fit = np.polyfit(np.log(x), y, 1)
+        print('Log fit: {} + {} * log(x)'.format(fit[1], fit[0]))
+        plot_curve(fit, 'log', ax, (min(x), max(x)))
+
+
+def plot_exp_regression(collection, ax):
+    for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V3, CLossV.D_LOSS_V4)}.items():
+        plot_data = list(
+            filter(lambda a: a.macs_count is not None and a.closs_w is not None and a.closs_v in clv_group,
+                   collection.archs.values()))
+        x = [a.model_acc for a in plot_data]
+        y = [a.macs_count for a in plot_data]
+        fit = np.polyfit(np.exp(x), y, 1)
+        print('Exp fit: {} + {} * e^x'.format(fit[1], fit[0]))
+        plot_curve(fit, 'exp', ax, (min(x), max(x)))
+
+
 def plot_data_vs_w():
     fig, acc_w_ax, macs_w_ax = configure_multiplot()
     plot_acc_vs_w(arch_collection, acc_w_ax)
+    plot_lin_regression(arch_collection, acc_w_ax)
     plot_macs_vs_w(arch_collection, macs_w_ax)
+    plot_log_regression(arch_collection, macs_w_ax)
     plt.subplots_adjust(hspace=0.3)
-    plt.savefig('data_vs_w.pdf')
+    plt.savefig('data_vs_w.pdf', bbox_inches='tight')
 
 
 if __name__ == '__main__':
     arch_collection = ArchDataCollection()
     arch_collection.load()
     plot_acc_vs_macs(arch_collection)
+    plot_acc_vs_macs_wo_pareto(arch_collection)
     plot_data_vs_w()

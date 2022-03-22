@@ -50,10 +50,10 @@ def main():
         if not archs[a_id].model_acc:
             archs[a_id].model_acc = extract_from_train(t_id)
             was_modified = True
-        # print(a_id, archs[a_id].super_model_acc, archs[a_id].model_acc, archs[a_id].genotype_txt)
-        if archs[a_id].model_acc:
-            print(','.join([
-                a_id, str(archs[a_id].model_acc), str(archs[a_id].macs_count)]))
+        print(a_id, archs[a_id].super_model_acc, archs[a_id].model_acc, archs[a_id].genotype_txt)
+        # if archs[a_id].model_acc:
+        #     print(','.join([
+        #         a_id, str(archs[a_id].model_acc), str(archs[a_id].macs_count)]))
         if was_modified:
             arch_data_collection.save()
 
