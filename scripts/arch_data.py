@@ -186,6 +186,14 @@ def create_update_arch_collection():
     arch_c.add_arch('M101', 'search-EXP-20220319-185244-2', '', CLossV.ORIGINAL)
     arch_c.add_arch('M102', 'search-EXP-20220319-185257-3', '', CLossV.ORIGINAL)
     arch_c.add_arch('M103', 'search-EXP-20220319-185244-3', '', CLossV.ORIGINAL)
+    arch_c.add_arch('M104', 'search-EXP-20220320-103237-0', '', CLossV.ORIGINAL)
+    arch_c.add_arch('M105', 'search-EXP-20220320-103241-3', '', CLossV.ORIGINAL)
+    arch_c.add_arch('M106', 'search-EXP-20220320-103242-1', '', CLossV.ORIGINAL)
+    arch_c.add_arch('M107', 'search-EXP-20220320-103243-2', '', CLossV.ORIGINAL)
+    arch_c.add_arch('M108', 'search-EXP-20220320-103251-0', '', CLossV.ORIGINAL)
+    arch_c.add_arch('M109', 'search-EXP-20220320-103257-3', '', CLossV.ORIGINAL)
+    arch_c.add_arch('M110', 'search-EXP-20220320-103258-1', '', CLossV.ORIGINAL)
+    arch_c.add_arch('M111', 'search-EXP-20220320-103259-2', '', CLossV.ORIGINAL)
     arch_c.save()
 
 

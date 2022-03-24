@@ -79,6 +79,8 @@ def plot_acc_vs_macs_wo_pareto(collection):
             y = a.macs_count
             s = a.arch_id
             plt.text(x=x, y=y, s=s, fontsize=3)
+        ax.set_xlim(0, 100)
+        ax.set_ylim(0, max([a.macs_count for a in plot_data]))
     plot_exp_regression(collection, ax)
     ax.legend()
     plt.savefig('acc_vs_macs_wo_pareto.pdf', bbox_inches='tight')
@@ -121,7 +123,7 @@ def configure_multiplot():
     return fig, acc_w_ax, macs_w_ax
 
 
-def plot_curve(fit, fit_type, ax, x_range):
+def plot_curve(fit, fit_type, ax, x_range, color='red'):
     x_v = np.arange(x_range[0], x_range[1], (x_range[1] - x_range[0]) / 100.0)
     if fit_type == 'log':
         y = [fit[1] + fit[0] * np.log(x) for x in x_v]
@@ -131,7 +133,7 @@ def plot_curve(fit, fit_type, ax, x_range):
         y = [fit[1] + fit[0] * np.exp(x) for x in x_v]
     else:
         raise RuntimeError('Invalid fit type')
-    ax.plot(x_v, y, color='red')
+    ax.plot(x_v, y, color=color)
 
 
 def plot_lin_regression(collection, ax):
@@ -159,6 +161,13 @@ def plot_log_regression(collection, ax):
 
 
 def plot_exp_regression(collection, ax):
+    def _get_tan_fit(exp_fit):
+        m = 100000000
+        x_tan = np.log(1 / exp_fit[0])
+        y_tan = exp_fit[1] + exp_fit[0] * np.exp(x_tan)
+        y_o = y_tan - m * x_tan
+        return m, y_o
+
     for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V3, CLossV.D_LOSS_V4)}.items():
         plot_data = list(
             filter(lambda a: a.macs_count is not None and a.closs_w is not None and a.closs_v in clv_group,
@@ -167,7 +176,8 @@ def plot_exp_regression(collection, ax):
         y = [a.macs_count for a in plot_data]
         fit = np.polyfit(np.exp(x), y, 1)
         print('Exp fit: {} + {} * e^x'.format(fit[1], fit[0]))
-        plot_curve(fit, 'exp', ax, (min(x), max(x)))
+        plot_curve(fit, 'exp', ax, (0, 100))
+        plot_curve(_get_tan_fit(fit), 'linear', ax, (0, 100), color='blue')
 
 
 def plot_data_vs_w():
