@@ -7,7 +7,7 @@ from scripts.arch_data import ArchDataCollection
 FIGSIZE = (12, 5)
 
 
-def plot_curve(fit, fit_type, ax, x_range):
+def plot_curve(fit, fit_type, ax, x_range, color):
     x_v = np.arange(x_range[0], x_range[1], (x_range[1] - x_range[0]) / 100.0)
     if fit_type == 'log':
         y = [fit[1] + fit[0] * np.log(x) for x in x_v]
@@ -15,13 +15,13 @@ def plot_curve(fit, fit_type, ax, x_range):
         y = [fit[1] + fit[0] * x for x in x_v]
     else:
         raise RuntimeError('Invalid fit type')
-    ax.plot(x_v, y, color='red')
+    ax.plot(x_v, y, color=color)
 
 
-def plot_lin_regression(x, y, ax):
+def plot_lin_regression(x, y, ax, color='red'):
     fit = linregress(x, y)
     print('Lin fit: {} + {} * x, r_squared = {}'.format(fit[1], fit[0], fit[2]))
-    plot_curve(fit, 'linear', ax, (min(x), max(x)))
+    plot_curve(fit, 'linear', ax, (min(x), max(x)), color)
 
 
 def plot_fp_vs_perf(arch_collection):
@@ -29,11 +29,11 @@ def plot_fp_vs_perf(arch_collection):
     ax = fig.add_subplot(111)
     plt.xlabel('time (s)')
     plt.ylabel('# floating point ops')
-    archs = list(filter(lambda a: hasattr(a, 'fpop_count') and a.fpop_count, arch_collection.archs.values()))
-    ax.scatter([a.fpop_count for a in archs], [a.time_for_100_inf for a in archs], color='red', marker='o')
-    plot_lin_regression([a.fpop_count for a in archs], [a.time_for_100_inf for a in archs], ax)
+    archs = list(filter(lambda a: hasattr(a, 'fp_op_count') and a.fp_op_count, arch_collection.archs.values()))
+    ax.scatter([a.fp_op_count for a in archs], [a.time_for_100_inf for a in archs], color='red', marker='o')
+    plot_lin_regression([a.fp_op_count for a in archs], [a.time_for_100_inf for a in archs], ax, color='blue')
     for a in archs:
-        x = a.fpop_count
+        x = a.fp_op_count
         y = a.time_for_100_inf
         plt.text(x=x, y=y, s=a.arch_id)
     plt.savefig('arch_fp_op_vs_perf.pdf')
@@ -57,7 +57,7 @@ def plot_mac_vs_perf(arch_collection):
 def main():
     arch_collection = ArchDataCollection()
     arch_collection.load()
-    # plot_fp_vs_perf(arch_collection)
+    plot_fp_vs_perf(arch_collection)
     plot_mac_vs_perf(arch_collection)
 
 

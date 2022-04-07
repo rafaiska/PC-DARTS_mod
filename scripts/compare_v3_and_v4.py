@@ -18,7 +18,7 @@ def compare_versions(arch_collection):
 
 
 def print_csv(archs_by_w):
-    for w in archs_by_w:
+    for w in sorted(archs_by_w):
         archs = archs_by_w[w]
         for a in archs:
             print(' & '.join([a.arch_id, V_NAME[a.closs_v], str(a.closs_w), str(a.macs_count), str(a.model_acc)]) +

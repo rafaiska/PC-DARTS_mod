@@ -10,6 +10,7 @@ class CLossV(Enum):
     D_LOSS_V2 = 4  # op_oracle with MAC based weights, differentiable op_loss v2 (with reduce importance)
     D_LOSS_V3 = 5  # op_oracle with MAC based weights, differentiable op_loss v3 (adjustment on zero MACS operators)
     D_LOSS_V4 = 6  # Same as M55, but without using different criterions for arch and regular optimizers
+    BOGUS_ORIGINAL = 7  # Original PC-DARTS, but using modified script. Unreliable as an original experiment
 
 
 class UsedGPU(Enum):
@@ -24,7 +25,8 @@ def quotes(s):
 class ArchData:
     ARCH_CSV_HEADER = ['arch_id', 'train_search_id', 'best_train_id',
                        'super_model_acc', 'model_acc', 'time_for_100_inf',
-                       'macs_count', 'genotype_txt', 'closs_v', 'closs_w']
+                       'macs_count', 'genotype_txt', 'closs_v', 'closs_w',
+                       'fp_op_count']
 
     def __init__(self):
         self.arch_id = None
@@ -37,9 +39,7 @@ class ArchData:
         self.genotype_txt = None
         self.closs_w = None
         self.closs_v = None
-        self.git_hash = None
-        self.train_search_gpu = None
-        self.best_train_gpu = None
+        self.fp_op_count = None
 
     def __str__(self):
         return quotes('","'.join([str(self.__getattribute__(k)) for k in ArchData.ARCH_CSV_HEADER]))
@@ -178,22 +178,46 @@ def create_update_arch_collection():
     arch_c.add_arch('M93', 'search-EXP-20220314-115705-1', 'eval-EXP-20220315-224925', CLossV.D_LOSS_V4)
     arch_c.add_arch('M94', 'search-EXP-20220314-115704-2', 'eval-EXP-20220316-103156', CLossV.D_LOSS_V4)
     arch_c.add_arch('M95', 'search-EXP-20220314-115704-3', 'eval-EXP-20220316-181950', CLossV.D_LOSS_V4)
-    arch_c.add_arch('M96', 'search-EXP-20220319-185257-0', '', CLossV.ORIGINAL)
-    arch_c.add_arch('M97', 'search-EXP-20220319-185244-0', '', CLossV.ORIGINAL)
-    arch_c.add_arch('M98', 'search-EXP-20220319-185258-1', '', CLossV.ORIGINAL)
-    arch_c.add_arch('M99', 'search-EXP-20220319-185244-1', '', CLossV.ORIGINAL)
-    arch_c.add_arch('M100', 'search-EXP-20220319-185258-2', '', CLossV.ORIGINAL)
-    arch_c.add_arch('M101', 'search-EXP-20220319-185244-2', '', CLossV.ORIGINAL)
-    arch_c.add_arch('M102', 'search-EXP-20220319-185257-3', '', CLossV.ORIGINAL)
-    arch_c.add_arch('M103', 'search-EXP-20220319-185244-3', '', CLossV.ORIGINAL)
-    arch_c.add_arch('M104', 'search-EXP-20220320-103237-0', '', CLossV.ORIGINAL)
-    arch_c.add_arch('M105', 'search-EXP-20220320-103241-3', '', CLossV.ORIGINAL)
-    arch_c.add_arch('M106', 'search-EXP-20220320-103242-1', '', CLossV.ORIGINAL)
-    arch_c.add_arch('M107', 'search-EXP-20220320-103243-2', '', CLossV.ORIGINAL)
-    arch_c.add_arch('M108', 'search-EXP-20220320-103251-0', '', CLossV.ORIGINAL)
-    arch_c.add_arch('M109', 'search-EXP-20220320-103257-3', '', CLossV.ORIGINAL)
-    arch_c.add_arch('M110', 'search-EXP-20220320-103258-1', '', CLossV.ORIGINAL)
-    arch_c.add_arch('M111', 'search-EXP-20220320-103259-2', '', CLossV.ORIGINAL)
+    arch_c.add_arch('M96', 'search-EXP-20220319-185257-0', 'eval-EXP-20220320-110447', CLossV.ORIGINAL)
+    arch_c.add_arch('M97', 'search-EXP-20220319-185244-0', 'eval-EXP-20220321-031315', CLossV.ORIGINAL)
+    arch_c.add_arch('M98', 'search-EXP-20220319-185258-1', 'eval-EXP-20220321-194236', CLossV.ORIGINAL)
+    arch_c.add_arch('M99', 'search-EXP-20220319-185244-1', 'eval-EXP-20220322-101544', CLossV.ORIGINAL)
+    arch_c.add_arch('M100', 'search-EXP-20220319-185258-2', 'eval-EXP-20220322-221733', CLossV.ORIGINAL)
+    arch_c.add_arch('M101', 'search-EXP-20220319-185244-2', 'eval-EXP-20220323-085108', CLossV.ORIGINAL)
+    arch_c.add_arch('M102', 'search-EXP-20220319-185257-3', 'eval-EXP-20220323-172146', CLossV.ORIGINAL)
+    arch_c.add_arch('M103', 'search-EXP-20220319-185244-3', 'eval-EXP-20220324-024848', CLossV.ORIGINAL)
+    arch_c.add_arch('M104', 'search-EXP-20220320-103237-0', 'eval-EXP-20220324-173027', CLossV.ORIGINAL)
+    arch_c.add_arch('M105', 'search-EXP-20220320-103241-3', 'eval-EXP-20220325-063558', CLossV.ORIGINAL)
+    arch_c.add_arch('M106', 'search-EXP-20220320-103242-1', 'eval-EXP-20220325-175132', CLossV.ORIGINAL)
+    arch_c.add_arch('M107', 'search-EXP-20220320-103243-2', 'eval-EXP-20220326-083532', CLossV.ORIGINAL)
+    arch_c.add_arch('M108', 'search-EXP-20220320-103251-0', 'eval-EXP-20220328-103407', CLossV.ORIGINAL)
+    arch_c.add_arch('M109', 'search-EXP-20220320-103257-3', 'eval-EXP-20220328-221049', CLossV.ORIGINAL)
+    arch_c.add_arch('M110', 'search-EXP-20220320-103258-1', 'eval-EXP-20220329-115904', CLossV.ORIGINAL)
+    arch_c.add_arch('M111', 'search-EXP-20220320-103259-2', 'eval-EXP-20220330-052928', CLossV.ORIGINAL)
+    arch_c.add_arch('M112', 'search-EXP-20220401-230817-2', 'eval-EXP-20220402-082907', CLossV.ORIGINAL)
+    arch_c.add_arch('M113', 'search-EXP-20220401-230819-1', 'eval-EXP-20220403-024942', CLossV.ORIGINAL)
+    arch_c.add_arch('M114', 'search-EXP-20220401-230819-3', 'eval-EXP-20220403-025651', CLossV.ORIGINAL)
+    arch_c.add_arch('M115', 'search-EXP-20220401-230823-0', 'eval-EXP-20220403-215247', CLossV.ORIGINAL)
+    arch_c.add_arch('M116', 'search-EXP-20220401-230835-2', 'eval-EXP-20220404-021504', CLossV.ORIGINAL)
+    arch_c.add_arch('M117', 'search-EXP-20220401-230837-1', 'eval-EXP-20220404-160823', CLossV.ORIGINAL)
+    arch_c.add_arch('M118', 'search-EXP-20220401-230837-3', 'eval-EXP-20220404-194751', CLossV.ORIGINAL)
+    arch_c.add_arch('M119', 'search-EXP-20220401-230840-0', 'eval-EXP-20220405-090555', CLossV.ORIGINAL)
+    arch_c.add_arch('M120', 'search-EXP-20220402-081719-0', 'eval-EXP-20220405-092938', CLossV.ORIGINAL)
+    arch_c.add_arch('M121', 'search-EXP-20220402-081720-1', '', CLossV.ORIGINAL)
+    arch_c.add_arch('M122', 'search-EXP-20220402-081720-3', '', CLossV.ORIGINAL)
+    arch_c.add_arch('M123', 'search-EXP-20220402-081721-2', '', CLossV.ORIGINAL)
+    arch_c.add_arch('M124', 'search-EXP-20220402-081731-0', '', CLossV.ORIGINAL)
+    arch_c.add_arch('M125', 'search-EXP-20220402-081738-1', '', CLossV.ORIGINAL)
+    arch_c.add_arch('M126', 'search-EXP-20220402-081738-3', '', CLossV.ORIGINAL)
+    arch_c.add_arch('M127', 'search-EXP-20220402-081739-2', '', CLossV.ORIGINAL)
+    arch_c.add_arch('M128', 'search-EXP-20220404-133031-0', '', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M129', 'search-EXP-20220404-133046-0', '', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M130', 'search-EXP-20220404-133026-1', '', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M131', 'search-EXP-20220404-133042-1', '', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M132', 'search-EXP-20220404-133022-2', '', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M133', 'search-EXP-20220404-133034-2', '', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M134', 'search-EXP-20220404-133022-3', '', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M135', 'search-EXP-20220404-133033-3', '', CLossV.D_LOSS_V4)
     arch_c.save()
 
 
@@ -303,3 +327,10 @@ def add_closs_v():
     arch_c.archs['M76'].closs_v = CLossV.ORIGINAL
 
     arch_c.save()
+
+
+def dump_archs_csv():
+    csv_path = '{}/archs.csv'.format(expanduser('~'))
+    arch_c = ArchDataCollection()
+    arch_c.load()
+    arch_c.csv_dump(csv_path)

@@ -8,7 +8,7 @@ from genotypes import Genotype
 EXP_DIR = '/home/rafael/Projetos/msc-rafael-cortez-sanchez/labbook/results'
 
 
-def check_train_search(fp, arch_id):
+def check_train(fp, arch_id):
     print('Checking arch id match for {}'.format(arch_id))
     case = TestCase()
     for line in fp:
@@ -21,6 +21,7 @@ def check_train_search(fp, arch_id):
 
 def extract_and_check(train_id, arch_id):
     if not train_id:
+        print('Train ID not available for {}'.format(arch_id))
         return None
     try:
         ts_f = tarfile.open('{}/{}.tar.gz'.format(EXP_DIR, train_id))
@@ -29,7 +30,7 @@ def extract_and_check(train_id, arch_id):
         return
     ts_f.extractall('/tmp/{}'.format(train_id))
     with open('/tmp/{}/log.txt'.format(train_id), 'r') as fp:
-        check_train_search(fp, arch_id)
+        check_train(fp, arch_id)
 
 
 def check_genotypes_equal(genotype_from_col, genotype_from_src):

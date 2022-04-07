@@ -71,16 +71,22 @@ def plot_acc_vs_macs_wo_pareto(collection):
         plot_data = list(
             filter(lambda a: a.model_acc is not None and a.macs_count is not None and a.closs_v in clv_group,
                    collection.archs.values()))
-        ax.scatter([a.model_acc for a in plot_data], [a.macs_count for a in plot_data],
+        x = [a.model_acc for a in plot_data]
+        min_x = min(x)
+        max_x = max(x)
+        x = [(i - min_x) / (max_x - min_x) for i in x]
+        y = [a.macs_count for a in plot_data]
+        min_y = min(y)
+        max_y = max(y)
+        y = [(i - min_y) / (max_y - min_y) for i in y]
+        ax.scatter(x, y,
                    c=[a.closs_w for a in plot_data] if g_name != 'Original' else None,
                    cmap='Reds' if g_name == 'Loss-v3' else 'Greens', label=g_name)
-        for a in plot_data:
-            x = a.model_acc
-            y = a.macs_count
-            s = a.arch_id
-            plt.text(x=x, y=y, s=s, fontsize=3)
-        ax.set_xlim(0, 100)
-        ax.set_ylim(0, max([a.macs_count for a in plot_data]))
+        # for a in plot_data:
+        #     x = a.model_acc
+        #     y = a.macs_count
+        #     s = a.arch_id
+        #     plt.text(x=x, y=y, s=s, fontsize=3)
     plot_exp_regression(collection, ax)
     ax.legend()
     plt.savefig('acc_vs_macs_wo_pareto.pdf', bbox_inches='tight')
@@ -131,6 +137,8 @@ def plot_curve(fit, fit_type, ax, x_range, color='red'):
         y = [fit[1] + fit[0] * x for x in x_v]
     elif fit_type == 'exp':
         y = [fit[1] + fit[0] * np.exp(x) for x in x_v]
+    elif fit_type == 'square':
+        y = [(fit[0] * x ** 2) + (fit[1] * x) + fit[2] for x in x_v]
     else:
         raise RuntimeError('Invalid fit type')
     ax.plot(x_v, y, color=color)
@@ -160,9 +168,9 @@ def plot_log_regression(collection, ax):
         plot_curve(fit, 'log', ax, (min(x), max(x)))
 
 
-def plot_exp_regression(collection, ax):
+def plot_exp_regression_bkp(collection, ax):
     def _get_tan_fit(exp_fit):
-        m = 100000000
+        m = 1
         x_tan = np.log(1 / exp_fit[0])
         y_tan = exp_fit[1] + exp_fit[0] * np.exp(x_tan)
         y_o = y_tan - m * x_tan
@@ -176,9 +184,40 @@ def plot_exp_regression(collection, ax):
         y = [a.macs_count for a in plot_data]
         fit = np.polyfit(np.exp(x), y, 1)
         print('Exp fit: {} + {} * e^x'.format(fit[1], fit[0]))
-        plot_curve(fit, 'exp', ax, (0, 100))
+        plot_curve(fit, 'exp', ax, (min(x), max(x)))
         plot_curve(_get_tan_fit(fit), 'linear', ax, (0, 100), color='blue')
 
+
+def plot_exp_regression(collection, ax):
+    def _get_tan_fit(exp_fit):
+        #  x   = (1 +2.09085377) / (2* 2.6224294)
+        m = 1
+        x_tan = (1 - exp_fit[1]) / (2 * exp_fit[0])
+        y_tan = (exp_fit[0] + x_tan ** 2) + (exp_fit[1] * x_tan) + exp_fit[2]
+        print(x_tan)
+        y_o = y_tan - m * x_tan
+        # y = m*x + y_o
+        return m, y_o
+
+    for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V3, CLossV.D_LOSS_V4)}.items():
+        plot_data = list(
+            filter(lambda a: a.macs_count is not None and a.model_acc is not None and a.closs_v in clv_group,
+                   collection.archs.values()))
+        x = [a.model_acc for a in plot_data]
+        min_x = min(x)
+        max_x = max(x)
+        x = [(i - min_x) / (max_x - min_x) for i in x]
+        y = [a.macs_count for a in plot_data]
+        min_y = min(y)
+        max_y = max(y)
+        y = [(i - min_y) / (max_y - min_y) for i in y]
+        fit = np.polyfit(x, y, 2)
+        print('FIT: ', fit)
+        print('Exp fit: {} + {} * e^x'.format(fit[1], fit[0]))
+        plot_curve(fit, 'square', ax, (0, 1))
+        plot_curve(_get_tan_fit(fit), 'linear', ax, (0, 1), color='blue')
+        for i in range(len(x)):
+            print(x[i], ',', y[i])
 
 def plot_data_vs_w():
     fig, acc_w_ax, macs_w_ax = configure_multiplot()
