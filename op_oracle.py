@@ -336,8 +336,10 @@ class OpPerformanceOracle:
 
 
 class CustomLoss(nn.CrossEntropyLoss):
-    def __init__(self, weight=None, size_average=True, ignore_index=-100, reduce=True, oracle=None, closs_w=1 / 10e6):
-        super(CustomLoss, self).__init__(weight, size_average)
+    def __init__(self, weight=None, size_average=None, ignore_index=-100, reduce=None, reduction='mean', oracle=None,
+                 closs_w=1 / 10e6):
+        super(CustomLoss, self).__init__(weight=weight, size_average=size_average, ignore_index=ignore_index,
+                                         reduce=reduce, reduction=reduction)
         self.alpha_normal = None
         self.alpha_reduce = None
         self.oracle = oracle

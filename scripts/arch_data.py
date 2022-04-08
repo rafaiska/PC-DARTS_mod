@@ -10,6 +10,7 @@ class CLossV(Enum):
     D_LOSS_V2 = 4  # op_oracle with MAC based weights, differentiable op_loss v2 (with reduce importance)
     D_LOSS_V3 = 5  # op_oracle with MAC based weights, differentiable op_loss v3 (adjustment on zero MACS operators)
     D_LOSS_V4 = 6  # Same as M55, but without using different criterions for arch and regular optimizers
+    D_LOSS_V5 = 8  # V4 but with a correct set of parameters for CustomLoss(nn.CrossEntropyLoss) (op_oracle.py)
     BOGUS_ORIGINAL = 7  # Original PC-DARTS, but using modified script. Unreliable as an original experiment
 
 
@@ -203,13 +204,13 @@ def create_update_arch_collection():
     arch_c.add_arch('M118', 'search-EXP-20220401-230837-3', 'eval-EXP-20220404-194751', CLossV.ORIGINAL)
     arch_c.add_arch('M119', 'search-EXP-20220401-230840-0', 'eval-EXP-20220405-090555', CLossV.ORIGINAL)
     arch_c.add_arch('M120', 'search-EXP-20220402-081719-0', 'eval-EXP-20220405-092938', CLossV.ORIGINAL)
-    arch_c.add_arch('M121', 'search-EXP-20220402-081720-1', '', CLossV.ORIGINAL)
-    arch_c.add_arch('M122', 'search-EXP-20220402-081720-3', '', CLossV.ORIGINAL)
-    arch_c.add_arch('M123', 'search-EXP-20220402-081721-2', '', CLossV.ORIGINAL)
-    arch_c.add_arch('M124', 'search-EXP-20220402-081731-0', '', CLossV.ORIGINAL)
-    arch_c.add_arch('M125', 'search-EXP-20220402-081738-1', '', CLossV.ORIGINAL)
-    arch_c.add_arch('M126', 'search-EXP-20220402-081738-3', '', CLossV.ORIGINAL)
-    arch_c.add_arch('M127', 'search-EXP-20220402-081739-2', '', CLossV.ORIGINAL)
+    arch_c.add_arch('M121', 'search-EXP-20220402-081720-1', 'eval-EXP-20220405-214306', CLossV.ORIGINAL)
+    arch_c.add_arch('M122', 'search-EXP-20220402-081720-3', 'eval-EXP-20220406-021242', CLossV.ORIGINAL)
+    arch_c.add_arch('M123', 'search-EXP-20220402-081721-2', 'eval-EXP-20220406-124001', CLossV.ORIGINAL)
+    arch_c.add_arch('M124', 'search-EXP-20220402-081731-0', 'eval-EXP-20220406-162747', CLossV.ORIGINAL)
+    arch_c.add_arch('M125', 'search-EXP-20220402-081738-1', 'eval-EXP-20220407-014419', CLossV.ORIGINAL)
+    arch_c.add_arch('M126', 'search-EXP-20220402-081738-3', 'eval-EXP-20220407-073829', CLossV.ORIGINAL)
+    arch_c.add_arch('M127', 'search-EXP-20220402-081739-2', 'eval-EXP-20220407-141117', CLossV.ORIGINAL)
     arch_c.add_arch('M128', 'search-EXP-20220404-133031-0', '', CLossV.D_LOSS_V4)
     arch_c.add_arch('M129', 'search-EXP-20220404-133046-0', '', CLossV.D_LOSS_V4)
     arch_c.add_arch('M130', 'search-EXP-20220404-133026-1', '', CLossV.D_LOSS_V4)
