@@ -7,7 +7,7 @@ from model import NetworkCIFAR
 from op_oracle import FPOpCounter
 from scripts.arch_data import ArchDataCollection
 
-MAX_NUMBER_OF_ARCHS_PROCESSED = 4
+MAX_NUMBER_OF_ARCHS_PROCESSED = 4  # So that the computer doesn't freeze due to swap memory usage
 
 
 def profile_arch(network):

@@ -46,7 +46,7 @@ def plot_acc_vs_macs(collection):
     ax = fig.add_subplot(111)
     plt.xlabel('Model Accuracy (from train.py)')
     plt.ylabel('# MACS')
-    for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V4,),
+    for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V4, CLossV.D_LOSS_V5),
                               'Original': (CLossV.ORIGINAL,)}.items():
         plot_data = list(
             filter(lambda a: a.model_acc is not None and a.macs_count is not None and a.closs_v in clv_group,
@@ -74,7 +74,7 @@ def plot_acc_vs_macs_wo_pareto(collection):
     ax = fig.add_subplot(111)
     plt.xlabel('Normalized Model Accuracy (from train.py)')
     plt.ylabel('Normalized # MACS')
-    for g_name, clv_group in {'Loss-v4': (CLossV.D_LOSS_V4,)}.items():
+    for g_name, clv_group in {'Loss-v4': (CLossV.D_LOSS_V4, CLossV.D_LOSS_V5)}.items():
         plot_data = list(
             filter(lambda a: a.model_acc is not None and a.macs_count is not None and a.closs_v in clv_group,
                    collection.archs.values()))
@@ -99,7 +99,7 @@ def plot_acc_vs_macs_wo_pareto(collection):
 def plot_acc_vs_w(collection, ax):
     ax.set_xlabel('Custom Loss Weight \"w\"')
     ax.set_ylabel('Model Accuracy (from train.py)')
-    for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V4,)}.items():
+    for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V4, CLossV.D_LOSS_V5)}.items():
         plot_data = list(
             filter(lambda a: a.model_acc is not None and a.closs_w is not None and a.closs_v in clv_group,
                    collection.archs.values()))
@@ -114,7 +114,7 @@ def plot_acc_vs_w(collection, ax):
 def plot_macs_vs_w(collection, ax):
     ax.set_xlabel('Custom Loss Weight \"w\"')
     ax.set_ylabel('# MACS')
-    for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V4,)}.items():
+    for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V4, CLossV.D_LOSS_V5)}.items():
         plot_data = list(
             filter(lambda a: a.macs_count is not None and a.closs_w is not None and a.closs_v in clv_group,
                    collection.archs.values()))
@@ -154,7 +154,7 @@ def plot_curve(fit, fit_type, ax, x_range, color='red', y_range=None):
 
 
 def plot_lin_regression(collection, ax):
-    for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V4,)}.items():
+    for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V4, CLossV.D_LOSS_V5)}.items():
         plot_data = list(
             filter(lambda a: a.model_acc is not None and a.closs_w is not None and a.closs_v in clv_group,
                    collection.archs.values()))
@@ -166,9 +166,10 @@ def plot_lin_regression(collection, ax):
 
 
 def plot_log_regression(collection, ax):
-    for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V4,)}.items():
+    for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V4, CLossV.D_LOSS_V5)}.items():
         plot_data = list(
-            filter(lambda a: a.macs_count is not None and a.closs_w is not None and a.closs_v in clv_group,
+            filter(lambda a:
+                   a.macs_count is not None and a.closs_w is not None and a.closs_w > 0.0 and a.closs_v in clv_group,
                    collection.archs.values()))
         x = [a.closs_w for a in plot_data]
         y = [a.macs_count for a in plot_data]
