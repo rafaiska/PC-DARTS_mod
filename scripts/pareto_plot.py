@@ -5,7 +5,7 @@ from scipy.optimize import curve_fit
 from scripts.arch_data import ArchDataCollection, CLossV
 
 FIGSIZE = (12, 5)
-FIGSIZE_SQUARE = (12, 12)
+FIGSIZE_SQUARE = (5, 5)
 
 
 def is_in_pareto_f(a1, plot_data):
@@ -48,9 +48,7 @@ def plot_acc_vs_macs(collection):
     plt.ylabel('# MACS')
     for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V4, CLossV.D_LOSS_V5),
                               'Original': (CLossV.ORIGINAL,)}.items():
-        plot_data = list(
-            filter(lambda a: a.model_acc is not None and a.macs_count is not None and a.closs_v in clv_group,
-                   collection.archs.values()))
+        plot_data = list(collection.select(clv_group).values())
         ax.scatter([a.model_acc for a in plot_data], [a.macs_count for a in plot_data],
                    c=[a.closs_w for a in plot_data] if g_name == 'Diff. Loss' else None, cmap='Reds', label=g_name)
         draw_pareto_frontier(plot_data, ax, 'blue' if g_name == 'Original' else 'red')
@@ -75,9 +73,7 @@ def plot_acc_vs_macs_wo_pareto(collection):
     plt.xlabel('Normalized Model Accuracy (from train.py)')
     plt.ylabel('Normalized # MACS')
     for g_name, clv_group in {'Loss-v4': (CLossV.D_LOSS_V4, CLossV.D_LOSS_V5)}.items():
-        plot_data = list(
-            filter(lambda a: a.model_acc is not None and a.macs_count is not None and a.closs_v in clv_group,
-                   collection.archs.values()))
+        plot_data = list(collection.select(clv_group).values())
         x = _normalize([a.model_acc for a in plot_data])
         y = _normalize([a.macs_count for a in plot_data])
         names = [a.arch_id for a in plot_data]
@@ -100,9 +96,7 @@ def plot_acc_vs_w(collection, ax):
     ax.set_xlabel('Custom Loss Weight \"w\"')
     ax.set_ylabel('Model Accuracy (from train.py)')
     for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V4, CLossV.D_LOSS_V5)}.items():
-        plot_data = list(
-            filter(lambda a: a.model_acc is not None and a.closs_w is not None and a.closs_v in clv_group,
-                   collection.archs.values()))
+        plot_data = list(collection.select(clv_group).values())
         ax.scatter([a.closs_w for a in plot_data], [a.model_acc for a in plot_data], label=g_name)
         for a in plot_data:
             x = a.closs_w
@@ -115,9 +109,7 @@ def plot_macs_vs_w(collection, ax):
     ax.set_xlabel('Custom Loss Weight \"w\"')
     ax.set_ylabel('# MACS')
     for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V4, CLossV.D_LOSS_V5)}.items():
-        plot_data = list(
-            filter(lambda a: a.macs_count is not None and a.closs_w is not None and a.closs_v in clv_group,
-                   collection.archs.values()))
+        plot_data = list(collection.select(clv_group).values())
         ax.scatter([a.closs_w for a in plot_data], [a.macs_count for a in plot_data], label=g_name)
         for a in plot_data:
             x = a.closs_w
@@ -155,9 +147,7 @@ def plot_curve(fit, fit_type, ax, x_range, color='red', y_range=None):
 
 def plot_lin_regression(collection, ax):
     for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V4, CLossV.D_LOSS_V5)}.items():
-        plot_data = list(
-            filter(lambda a: a.model_acc is not None and a.closs_w is not None and a.closs_v in clv_group,
-                   collection.archs.values()))
+        plot_data = list(collection.select(clv_group).values())
         x = [a.closs_w for a in plot_data]
         y = [a.model_acc for a in plot_data]
         fit = np.polyfit(x, y, 1)
@@ -167,10 +157,7 @@ def plot_lin_regression(collection, ax):
 
 def plot_log_regression(collection, ax):
     for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V4, CLossV.D_LOSS_V5)}.items():
-        plot_data = list(
-            filter(lambda a:
-                   a.macs_count is not None and a.closs_w is not None and a.closs_w > 0.0 and a.closs_v in clv_group,
-                   collection.archs.values()))
+        plot_data = list(collection.select(clv_group, closs_w_ht0=True).values())
         x = [a.closs_w for a in plot_data]
         y = [a.macs_count for a in plot_data]
         fit = np.polyfit(np.log(x), y, 1)
@@ -192,7 +179,7 @@ def plot_exp_regression(x, y, ax):
         y_o = y_tan - m * x_tan
         return m, y_o
 
-    popt, pcov = curve_fit(_exp_func, x, y, p0=(1, 0, 1))
+    popt, pcov = curve_fit(_exp_func, x, y, p0=(1, 0, 1), maxfev=10000)
     print('Exp. fit y = ae^(-b*x) + c: ', popt)
     print(pcov)
     curve_x = np.linspace(0.0, 1.0, 100)

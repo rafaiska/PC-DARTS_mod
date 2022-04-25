@@ -14,9 +14,11 @@ class CLossV(Enum):
     BOGUS_ORIGINAL = 7  # Original PC-DARTS, but using modified script. Unreliable as an original experiment
 
 
-class UsedGPU(Enum):
-    SDUMONT_K40 = 1
-    CENAPAD_A100 = 2
+class HPCCluster(Enum):
+    SDUMONT = 1
+    CENAPAD = 2
+    LMCAD = 3
+    FINGANFORN = 4
 
 
 def quotes(s):
@@ -24,10 +26,9 @@ def quotes(s):
 
 
 class ArchData:
-    ARCH_CSV_HEADER = ['arch_id', 'train_search_id', 'best_train_id',
-                       'super_model_acc', 'model_acc', 'time_for_100_inf',
-                       'macs_count', 'genotype_txt', 'closs_v', 'closs_w',
-                       'fp_op_count']
+    ARCH_CSV_HEADER = ['arch_id', 'train_search_id', 'train_search_sys', 'best_train_id', 'best_train_sys',
+                       'super_model_acc', 'model_acc', 'time_for_100_inf', 'macs_count', 'genotype_txt', 'closs_v',
+                       'closs_w', 'fp_op_count']
 
     def __init__(self):
         self.arch_id = None
@@ -41,6 +42,8 @@ class ArchData:
         self.closs_w = None
         self.closs_v = None
         self.fp_op_count = None
+        self.train_search_sys = None
+        self.best_train_sys = None
 
     def __str__(self):
         return quotes('","'.join([str(self.__getattribute__(k)) for k in ArchData.ARCH_CSV_HEADER]))
@@ -55,6 +58,20 @@ class ArchDataCollection:
         self.collection_file_path = collection_file_path
         self.archs = None
 
+    def select(self, closs_vs, train_search_sys=HPCCluster.SDUMONT, best_train_sys=HPCCluster.CENAPAD,
+               closs_w_ht0=False, has_macs=True, has_acc=True):
+        filtered = self.archs.values()
+        filtered = list(filter(lambda a: a.closs_v in closs_vs, filtered))
+        filtered = list(filter(lambda a: a.train_search_sys == train_search_sys, filtered))
+        filtered = list(filter(lambda a: a.best_train_sys == best_train_sys, filtered))
+        if has_acc:
+            filtered = list(filter(lambda a: a.model_acc, filtered))
+        if has_macs:
+            filtered = list(filter(lambda a: a.macs_count, filtered))
+        if closs_w_ht0:
+            filtered = list(filter(lambda a: a.closs_w is None or a.closs_w > 0.0, filtered))
+        return {a.arch_id: a for a in filtered}
+
     def save(self):
         with open(self.collection_file_path, 'wb') as fp:
             pickle.dump(self.archs, fp, protocol=pickle.HIGHEST_PROTOCOL)
@@ -66,16 +83,20 @@ class ArchDataCollection:
         except FileNotFoundError:
             self.archs = {}
 
-    def add_arch(self, arch_id, train_search_id, best_train_id=None, closs_v=None):
+    def add_arch(self, arch_id, train_search_id, best_train_id=None, closs_v=None,
+                 train_search_sys=None, best_train_sys=None):
         if arch_id not in self.archs:
             a = ArchData()
             a.arch_id = arch_id
             a.train_search_id = train_search_id
             a.closs_v = closs_v
+            a.train_search_sys = train_search_sys
             self.archs[arch_id] = a
         else:
             a = self.archs[arch_id]
         a.best_train_id = best_train_id
+        if best_train_sys is not None:
+            a.best_train_sys = best_train_sys
 
     def csv_dump(self, path):
         with open(path, 'w') as fp:
@@ -213,20 +234,44 @@ def create_update_arch_collection():
     arch_c.add_arch('M127', 'search-EXP-20220402-081739-2', 'eval-EXP-20220407-141117', CLossV.ORIGINAL)
     arch_c.add_arch('M128', 'search-EXP-20220404-133031-0', 'eval-EXP-20220408-015421', CLossV.D_LOSS_V4)
     arch_c.add_arch('M129', 'search-EXP-20220404-133046-0', 'eval-EXP-20220408-054146', CLossV.D_LOSS_V4)
-    arch_c.add_arch('M130', 'search-EXP-20220404-133026-1', '', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M130', 'search-EXP-20220404-133026-1', 'eval-EXP-20220415-023440', CLossV.D_LOSS_V4)
     arch_c.add_arch('M131', 'search-EXP-20220404-133042-1', 'eval-EXP-20220409-032454', CLossV.D_LOSS_V4)
     arch_c.add_arch('M132', 'search-EXP-20220404-133022-2', 'eval-EXP-20220411-075434', CLossV.D_LOSS_V4)
     arch_c.add_arch('M133', 'search-EXP-20220404-133034-2', 'eval-EXP-20220412-051145', CLossV.D_LOSS_V4)
     arch_c.add_arch('M134', 'search-EXP-20220404-133022-3', 'eval-EXP-20220412-091218', CLossV.D_LOSS_V4)
-    arch_c.add_arch('M135', 'search-EXP-20220404-133033-3', '', CLossV.D_LOSS_V4)
-    arch_c.add_arch('M136', 'search-EXP-20220412-155259-0', '', CLossV.D_LOSS_V5)
-    arch_c.add_arch('M137', 'search-EXP-20220412-155313-0', '', CLossV.D_LOSS_V5)
-    arch_c.add_arch('M138', 'search-EXP-20220412-155300-1', '', CLossV.D_LOSS_V5)
-    arch_c.add_arch('M139', 'search-EXP-20220412-155313-1', '', CLossV.D_LOSS_V5)
-    arch_c.add_arch('M140', 'search-EXP-20220412-155300-2', '', CLossV.D_LOSS_V5)
-    arch_c.add_arch('M141', 'search-EXP-20220412-155312-2', '', CLossV.D_LOSS_V5)
-    arch_c.add_arch('M142', 'search-EXP-20220412-155300-3', '', CLossV.D_LOSS_V5)
-    arch_c.add_arch('M143', 'search-EXP-20220412-155311-3', '', CLossV.D_LOSS_V5)
+    arch_c.add_arch('M135', 'search-EXP-20220404-133033-3', 'eval-EXP-20220412-222854', CLossV.D_LOSS_V4)
+    arch_c.add_arch('M136', 'search-EXP-20220412-155259-0', 'eval-EXP-20220413-082912', CLossV.D_LOSS_V5)
+    arch_c.add_arch('M137', 'search-EXP-20220412-155313-0', 'eval-EXP-20220413-152141', CLossV.D_LOSS_V5)
+    arch_c.add_arch('M138', 'search-EXP-20220412-155300-1', 'eval-EXP-20220413-180005', CLossV.D_LOSS_V5)
+    arch_c.add_arch('M139', 'search-EXP-20220412-155313-1', 'eval-EXP-20220413-210017', CLossV.D_LOSS_V5)
+    arch_c.add_arch('M140', 'search-EXP-20220412-155300-2', 'eval-EXP-20220414-004037', CLossV.D_LOSS_V5)
+    arch_c.add_arch('M141', 'search-EXP-20220412-155312-2', 'eval-EXP-20220414-033101', CLossV.D_LOSS_V5)
+    arch_c.add_arch('M142', 'search-EXP-20220412-155300-3', 'eval-EXP-20220414-101103', CLossV.D_LOSS_V5)
+    arch_c.add_arch('M143', 'search-EXP-20220412-155311-3', 'eval-EXP-20220414-200057', CLossV.D_LOSS_V5)
+    arch_c.add_arch('M144', 'search-EXP-20220416-142626-0', 'eval-EXP-20220421-225903', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M145', 'search-EXP-20220416-225000-0', 'eval-EXP-20220421-201218', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M146', 'search-EXP-20220416-142641-0', 'eval-EXP-20220421-133614', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M147', 'search-EXP-20220416-224943-0', 'eval-EXP-20220421-031644', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M148', 'search-EXP-20220416-142639-1', 'eval-EXP-20220421-011326', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M149', 'search-EXP-20220416-142626-1', 'eval-EXP-20220420-143601', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M150', 'search-EXP-20220416-225000-1', 'eval-EXP-20220420-104017', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M151', 'search-EXP-20220416-224943-1', 'eval-EXP-20220420-011140', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M152', 'search-EXP-20220416-225001-2', 'eval-EXP-20220419-234458', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M153', 'search-EXP-20220416-142626-2', 'eval-EXP-20220419-125745', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M154', 'search-EXP-20220416-224943-2', 'eval-EXP-20220419-051644', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M155', 'search-EXP-20220416-142640-2', 'eval-EXP-20220419-021308', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M156', 'search-EXP-20220416-142626-3', 'eval-EXP-20220418-190245', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M157', 'search-EXP-20220416-225000-3', 'eval-EXP-20220418-185548', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M158', 'search-EXP-20220416-142641-3', 'eval-EXP-20220418-093535', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M159', 'search-EXP-20220416-224943-3', 'eval-EXP-20220418-093527', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M160', 'search-EXP-20220418-231106-0', 'eval-EXP-20220424-095257', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M161', 'search-EXP-20220418-231123-0', 'eval-EXP-20220424-021615', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M162', 'search-EXP-20220418-231106-1', 'eval-EXP-20220423-203035', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M163', 'search-EXP-20220418-231123-1', 'eval-EXP-20220423-105424', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M164', 'search-EXP-20220418-231107-2', 'eval-EXP-20220423-033202', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M165', 'search-EXP-20220418-231124-2', 'eval-EXP-20220422-230046', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M166', 'search-EXP-20220418-231113-3', 'eval-EXP-20220422-133246', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M167', 'search-EXP-20220418-231131-3', 'eval-EXP-20220422-085626', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
     arch_c.save()
 
 
@@ -343,3 +388,31 @@ def dump_archs_csv():
     arch_c = ArchDataCollection()
     arch_c.load()
     arch_c.csv_dump(csv_path)
+
+
+def set_train_search_sys():
+    arch_c = ArchDataCollection()
+    arch_c.load()
+    for a in arch_c.archs.values():
+        a.train_search_sys = HPCCluster.SDUMONT
+    arch_c.archs['M2'].train_search_sys = HPCCluster.LMCAD
+    arch_c.archs['M5'].train_search_sys = HPCCluster.CENAPAD
+    arch_c.archs['M6'].train_search_sys = HPCCluster.LMCAD
+    arch_c.archs['M7'].train_search_sys = HPCCluster.LMCAD
+    arch_c.save()
+
+
+def set_best_train_sys():
+    arch_c = ArchDataCollection()
+    arch_c.load()
+    cenapad_archs = set()
+    with open('/home/rafael/cenapad_archs.txt', 'r') as fp:
+        for line in fp:
+            cenapad_archs.add(line[:-1])
+    for a in arch_c.archs.values():
+        if a.arch_id in cenapad_archs:
+            a.best_train_sys = HPCCluster.CENAPAD
+        else:
+            a.best_train_sys = HPCCluster.SDUMONT
+    arch_c.archs['M2'].best_train_sys = HPCCluster.LMCAD
+    arch_c.save()

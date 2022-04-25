@@ -1,13 +1,15 @@
+import gc
+import os
+
 import thop
 import torch
-import gc
 
 import genotypes
 from model import NetworkCIFAR
 from op_oracle import FPOpCounter
 from scripts.arch_data import ArchDataCollection
 
-MAX_NUMBER_OF_ARCHS_PROCESSED = 4  # So that the computer doesn't freeze due to swap memory usage
+MIN_FREE_MEM_THRESHOLD = 2000000  # So that the computer doesn't freeze due to swap memory usage
 
 
 def profile_arch(network):
@@ -29,37 +31,61 @@ def get_fpops(arch_id):
     return counter.count_network_fp_ops()
 
 
+def get_free_sys_memory():
+    return int(os.popen('free -t').readlines()[1].split()[-1])
+
+
+def create_network_for_measures(arch):
+    network = NetworkCIFAR(36, 10, 20, False, eval('genotypes.{}'.format(arch.arch_id))).cuda()
+    network.drop_path_prob = 0.0
+    return network
+
+
+def assess_and_set_macs(arch):
+    if not hasattr(arch, 'macs_count') or not arch.macs_count:
+        network = create_network_for_measures(arch)
+        print('\tCounting MACs for arch {}'.format(arch.arch_id))
+        arch.macs_count = get_macs(network)
+        del network
+        return True
+    return False
+
+
+def assess_and_set_inf_time(arch):
+    if not hasattr(arch, 'time_for_100_inf') or not arch.time_for_100_inf:
+        network = create_network_for_measures(arch)
+        print('\tProfiling arch {}'.format(arch.arch_id))
+        cpu_time, cuda_time = profile_arch(network)
+        arch.time_for_100_inf = cuda_time
+        del network
+        return True
+    return False
+
+
+def assess_and_set_fp_op(arch):
+    if not hasattr(arch, 'fp_op_count') or not arch.fp_op_count:
+        print('\tCounting FPOPs for arch {}'.format(arch.arch_id))
+        arch.fp_op_count = get_fpops(arch.arch_id)
+        return True
+    return False
+
+
 def main():
     assert type(genotypes.M1) == genotypes.Genotype
     collection = ArchDataCollection()
     collection.load()
-    counter = 0
-    for arch_id_str, arch in collection.archs.items():
-        if counter >= MAX_NUMBER_OF_ARCHS_PROCESSED:
+    for arch in collection.archs.values():
+        if get_free_sys_memory() <= MIN_FREE_MEM_THRESHOLD:
+            print('Stopping due to insufficient system memory')
             break
-        print('Checking arch {}...'.format(arch_id_str))
-        assessed = False
-        network = NetworkCIFAR(36, 10, 20, False, eval('genotypes.{}'.format(arch_id_str))).cuda()
-        network.drop_path_prob = 0.0
-        if not hasattr(arch, 'macs_count') or not arch.macs_count:
-            print('\tCounting MACs for arch {}'.format(arch_id_str))
-            arch.macs_count = get_macs(network)
-            assessed = True
-        if not hasattr(arch, 'time_for_100_inf') or not arch.time_for_100_inf:
-            cpu_time, cuda_time = profile_arch(network)
-            print('\tProfiling arch {}'.format(arch_id_str))
-            arch.time_for_100_inf = cuda_time
-            assessed = True
-        if not hasattr(arch, 'fp_op_count'):
-            print('\tCounting FPOPs for arch {}'.format(arch_id_str))
-            arch.fp_op_count = get_fpops(arch_id_str)
-            assessed = True
-        if assessed:
-            counter += 1
+        print('Checking arch {}...'.format(arch.arch_id))
+        collection_modified = assess_and_set_macs(arch)
+        collection_modified = assess_and_set_inf_time(arch) or collection_modified
+        collection_modified = assess_and_set_fp_op(arch) or collection_modified
+        if collection_modified:
             print('\tSaving collection')
             collection.save()
         torch.cuda.empty_cache()
-        del network
         gc.collect()
 
 
