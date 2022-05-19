@@ -27,8 +27,8 @@ def plot_lin_regression(x, y, ax, color='red'):
 def plot_fp_vs_perf(arch_collection):
     fig = plt.figure(figsize=FIGSIZE)
     ax = fig.add_subplot(111)
-    plt.xlabel('time (s)')
-    plt.ylabel('# floating point ops')
+    plt.xlabel('Time for 100 Inferences (µs)')
+    plt.ylabel('# Floating Point Operations')
     archs = list(filter(lambda a: hasattr(a, 'fp_op_count') and a.fp_op_count, arch_collection.archs.values()))
     ax.scatter([a.fp_op_count for a in archs], [a.time_for_100_inf for a in archs], color='red', marker='o')
     plot_lin_regression([a.fp_op_count for a in archs], [a.time_for_100_inf for a in archs], ax, color='blue')
@@ -42,8 +42,8 @@ def plot_fp_vs_perf(arch_collection):
 def plot_mac_vs_perf(arch_collection):
     fig = plt.figure(figsize=FIGSIZE)
     ax = fig.add_subplot(111)
-    plt.xlabel('time (s)')
-    plt.ylabel('# MACs using thop')
+    plt.xlabel('Time for 100 Inferences (µs)')
+    plt.ylabel('# MACs Using thop')
     archs = list(filter(lambda a: hasattr(a, 'macs_count') and a.macs_count, arch_collection.archs.values()))
     ax.scatter([a.macs_count for a in archs], [a.time_for_100_inf for a in archs], color='blue', marker='o')
     plot_lin_regression([a.macs_count for a in archs], [a.time_for_100_inf for a in archs], ax)
@@ -54,9 +54,16 @@ def plot_mac_vs_perf(arch_collection):
     plt.savefig('arch_mac_vs_perf.pdf', bbox_inches='tight')
 
 
+def count_archs(collection):
+    arch_list = list(filter(lambda a: hasattr(a, 'macs_count') and hasattr(a, 'fp_op_count') and a.macs_count,
+                            collection.archs.values()))
+    print('Number of architectures:', len(arch_list))
+
+
 def main():
     arch_collection = ArchDataCollection()
     arch_collection.load()
+    count_archs(arch_collection)
     plot_fp_vs_perf(arch_collection)
     plot_mac_vs_perf(arch_collection)
 
