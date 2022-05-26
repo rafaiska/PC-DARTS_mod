@@ -2,7 +2,9 @@
 import datetime
 import tarfile
 
-from scripts.arch_data import ArchDataCollection
+import numpy as np
+
+from scripts.arch_data import ArchDataCollection, CLossV
 
 EXP_DIR = '/home/rafael/Projetos/msc-rafael-cortez-sanchez/labbook/results'
 
@@ -40,12 +42,16 @@ def main():
     arch_data_collection = ArchDataCollection()
     arch_data_collection.load()
     archs = arch_data_collection.archs
+    times = []
     for a_id in archs:
-        ts_id = archs[a_id].train_search_id
-        t_id = archs[a_id].best_train_id
-        elapsed_time_ts = extract_elapsed_time(ts_id)
-        elapsed_time_t = extract_elapsed_time(t_id)
-        print(a_id, elapsed_time_ts, elapsed_time_t)
+        if archs[a_id].closs_v == CLossV.D_LOSS_V5:
+            ts_id = archs[a_id].train_search_id
+            # t_id = archs[a_id].best_train_id
+            elapsed_time_ts = extract_elapsed_time(ts_id)
+            # elapsed_time_t = extract_elapsed_time(t_id)
+            # print(a_id, elapsed_time_ts, elapsed_time_t)
+            times.append(elapsed_time_ts)
+    print('Avg. Train Search Time', np.average(times), '+-', np.std(times))
 
 
 if __name__ == '__main__':

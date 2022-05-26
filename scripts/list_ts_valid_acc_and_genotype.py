@@ -2,8 +2,10 @@
 import tarfile
 
 from scripts.arch_data import ArchDataCollection
+from scripts.arch_data import CLossV
 
 EXP_DIR = '/home/rafael/Projetos/msc-rafael-cortez-sanchez/labbook/results'
+FINAL_CLOSS_V = CLossV.D_LOSS_V5
 
 
 def get_best_va_and_geno(fp):
@@ -40,6 +42,7 @@ def main():
     arch_data_collection = ArchDataCollection()
     arch_data_collection.load()
     archs = arch_data_collection.archs
+    best_closs_arch_acc = 0.0
     for a_id in archs:
         was_modified = False
         ts_id = archs[a_id].train_search_id
@@ -56,6 +59,9 @@ def main():
         #         a_id, str(archs[a_id].model_acc), str(archs[a_id].macs_count)]))
         if was_modified:
             arch_data_collection.save()
+        if archs[a_id].closs_v == FINAL_CLOSS_V and archs[a_id].model_acc and archs[a_id].model_acc > best_closs_arch_acc:
+            best_closs_arch_acc = archs[a_id].model_acc
+    print('Best Acc:', best_closs_arch_acc)
 
 
 if __name__ == '__main__':

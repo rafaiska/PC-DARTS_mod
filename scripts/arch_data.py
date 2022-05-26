@@ -62,8 +62,10 @@ class ArchDataCollection:
                closs_w_ht0=False, has_macs=True, has_acc=True):
         filtered = self.archs.values()
         filtered = list(filter(lambda a: a.closs_v in closs_vs, filtered))
-        filtered = list(filter(lambda a: a.train_search_sys == train_search_sys, filtered))
-        filtered = list(filter(lambda a: a.best_train_sys == best_train_sys, filtered))
+        if train_search_sys:
+            filtered = list(filter(lambda a: a.train_search_sys == train_search_sys, filtered))
+        if best_train_sys:
+            filtered = list(filter(lambda a: a.best_train_sys == best_train_sys, filtered))
         if has_acc:
             filtered = list(filter(lambda a: a.model_acc, filtered))
         if has_macs:
@@ -97,6 +99,12 @@ class ArchDataCollection:
         a.best_train_id = best_train_id
         if best_train_sys is not None:
             a.best_train_sys = best_train_sys
+
+    def remove_arch(self, arch_id):
+        if arch_id in self.archs:
+            del self.archs[arch_id]
+        else:
+            raise RuntimeError
 
     def csv_dump(self, path):
         with open(path, 'w') as fp:
@@ -248,30 +256,155 @@ def create_update_arch_collection():
     arch_c.add_arch('M141', 'search-EXP-20220412-155312-2', 'eval-EXP-20220414-033101', CLossV.D_LOSS_V5)
     arch_c.add_arch('M142', 'search-EXP-20220412-155300-3', 'eval-EXP-20220414-101103', CLossV.D_LOSS_V5)
     arch_c.add_arch('M143', 'search-EXP-20220412-155311-3', 'eval-EXP-20220414-200057', CLossV.D_LOSS_V5)
-    arch_c.add_arch('M144', 'search-EXP-20220416-142626-0', 'eval-EXP-20220421-225903', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
-    arch_c.add_arch('M145', 'search-EXP-20220416-225000-0', 'eval-EXP-20220421-201218', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
-    arch_c.add_arch('M146', 'search-EXP-20220416-142641-0', 'eval-EXP-20220421-133614', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
-    arch_c.add_arch('M147', 'search-EXP-20220416-224943-0', 'eval-EXP-20220421-031644', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
-    arch_c.add_arch('M148', 'search-EXP-20220416-142639-1', 'eval-EXP-20220421-011326', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
-    arch_c.add_arch('M149', 'search-EXP-20220416-142626-1', 'eval-EXP-20220420-143601', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
-    arch_c.add_arch('M150', 'search-EXP-20220416-225000-1', 'eval-EXP-20220420-104017', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
-    arch_c.add_arch('M151', 'search-EXP-20220416-224943-1', 'eval-EXP-20220420-011140', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
-    arch_c.add_arch('M152', 'search-EXP-20220416-225001-2', 'eval-EXP-20220419-234458', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
-    arch_c.add_arch('M153', 'search-EXP-20220416-142626-2', 'eval-EXP-20220419-125745', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
-    arch_c.add_arch('M154', 'search-EXP-20220416-224943-2', 'eval-EXP-20220419-051644', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
-    arch_c.add_arch('M155', 'search-EXP-20220416-142640-2', 'eval-EXP-20220419-021308', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
-    arch_c.add_arch('M156', 'search-EXP-20220416-142626-3', 'eval-EXP-20220418-190245', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
-    arch_c.add_arch('M157', 'search-EXP-20220416-225000-3', 'eval-EXP-20220418-185548', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
-    arch_c.add_arch('M158', 'search-EXP-20220416-142641-3', 'eval-EXP-20220418-093535', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
-    arch_c.add_arch('M159', 'search-EXP-20220416-224943-3', 'eval-EXP-20220418-093527', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
-    arch_c.add_arch('M160', 'search-EXP-20220418-231106-0', 'eval-EXP-20220424-095257', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
-    arch_c.add_arch('M161', 'search-EXP-20220418-231123-0', 'eval-EXP-20220424-021615', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
-    arch_c.add_arch('M162', 'search-EXP-20220418-231106-1', 'eval-EXP-20220423-203035', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
-    arch_c.add_arch('M163', 'search-EXP-20220418-231123-1', 'eval-EXP-20220423-105424', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
-    arch_c.add_arch('M164', 'search-EXP-20220418-231107-2', 'eval-EXP-20220423-033202', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
-    arch_c.add_arch('M165', 'search-EXP-20220418-231124-2', 'eval-EXP-20220422-230046', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
-    arch_c.add_arch('M166', 'search-EXP-20220418-231113-3', 'eval-EXP-20220422-133246', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
-    arch_c.add_arch('M167', 'search-EXP-20220418-231131-3', 'eval-EXP-20220422-085626', CLossV.ORIGINAL, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M144', 'search-EXP-20220416-142626-0', 'eval-EXP-20220421-225903', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M145', 'search-EXP-20220416-225000-0', 'eval-EXP-20220421-201218', CLossV.ORIGINAL,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M146', 'search-EXP-20220416-142641-0', 'eval-EXP-20220421-133614', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M147', 'search-EXP-20220416-224943-0', 'eval-EXP-20220421-031644', CLossV.ORIGINAL,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M148', 'search-EXP-20220416-142639-1', 'eval-EXP-20220421-011326', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M149', 'search-EXP-20220416-142626-1', 'eval-EXP-20220420-143601', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M150', 'search-EXP-20220416-225000-1', 'eval-EXP-20220420-104017', CLossV.ORIGINAL,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M151', 'search-EXP-20220416-224943-1', 'eval-EXP-20220420-011140', CLossV.ORIGINAL,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M152', 'search-EXP-20220416-225001-2', 'eval-EXP-20220419-234458', CLossV.ORIGINAL,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M153', 'search-EXP-20220416-142626-2', 'eval-EXP-20220419-125745', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M154', 'search-EXP-20220416-224943-2', 'eval-EXP-20220419-051644', CLossV.ORIGINAL,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M155', 'search-EXP-20220416-142640-2', 'eval-EXP-20220419-021308', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M156', 'search-EXP-20220416-142626-3', 'eval-EXP-20220418-190245', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M157', 'search-EXP-20220416-225000-3', 'eval-EXP-20220418-185548', CLossV.ORIGINAL,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M158', 'search-EXP-20220416-142641-3', 'eval-EXP-20220418-093535', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M159', 'search-EXP-20220416-224943-3', 'eval-EXP-20220418-093527', CLossV.ORIGINAL,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M160', 'search-EXP-20220418-231106-0', 'eval-EXP-20220424-095257', CLossV.ORIGINAL,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M161', 'search-EXP-20220418-231123-0', 'eval-EXP-20220424-021615', CLossV.ORIGINAL,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M162', 'search-EXP-20220418-231106-1', 'eval-EXP-20220423-203035', CLossV.ORIGINAL,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M163', 'search-EXP-20220418-231123-1', 'eval-EXP-20220423-105424', CLossV.ORIGINAL,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M164', 'search-EXP-20220418-231107-2', 'eval-EXP-20220423-033202', CLossV.ORIGINAL,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M165', 'search-EXP-20220418-231124-2', 'eval-EXP-20220422-230046', CLossV.ORIGINAL,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M166', 'search-EXP-20220418-231113-3', 'eval-EXP-20220422-133246', CLossV.ORIGINAL,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M167', 'search-EXP-20220418-231131-3', 'eval-EXP-20220422-085626', CLossV.ORIGINAL,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M168', 'search-EXP-20220510-121453-0', 'eval-EXP-20220512-154646', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M169', 'search-EXP-20220510-121452-0', 'eval-EXP-20220512-154701', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M170', 'search-EXP-20220510-121505-0', 'eval-EXP-20220512-194147', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M171', 'search-EXP-20220510-121507-0', 'eval-EXP-20220512-221653', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M172', 'search-EXP-20220510-121452-1', 'eval-EXP-20220513-022737', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M173', 'search-EXP-20220510-121505-1', 'eval-EXP-20220513-050153', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M174', 'search-EXP-20220510-121504-1', 'eval-EXP-20220513-062937', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M175', 'search-EXP-20220510-121452-2', 'eval-EXP-20220513-094104', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M176', 'search-EXP-20220510-121505-2', 'eval-EXP-20220513-114251', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M177', 'search-EXP-20220510-121504-2', 'eval-EXP-20220513-134114', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M178', 'search-EXP-20220510-121452-3', 'eval-EXP-20220513-171451', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M179', 'search-EXP-20220510-121507-3', 'eval-EXP-20220513-174538', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M180', 'search-EXP-20220510-121506-3', 'eval-EXP-20220513-211852', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M181', 'search-EXP-20220510-121454-3', 'eval-EXP-20220514-013020', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M182', 'search-EXP-20220512-140214-0', 'eval-EXP-20220514-030448', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M183', 'search-EXP-20220512-140231-0', 'eval-EXP-20220514-081416', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M184', 'search-EXP-20220512-140216-0', 'eval-EXP-20220514-095943', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M185', 'search-EXP-20220512-140227-0', 'eval-EXP-20220514-200018', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M186', 'search-EXP-20220512-140228-1', 'eval-EXP-20220515-013326', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M187', 'search-EXP-20220512-140215-1', 'eval-EXP-20220515-130336', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M188', 'search-EXP-20220512-140214-1', 'eval-EXP-20220515-212533', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M189', 'search-EXP-20220512-140230-1', 'eval-EXP-20220516-000351', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M190', 'search-EXP-20220512-140214-2', 'eval-EXP-20220516-053346', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M191', 'search-EXP-20220512-140227-2', 'eval-EXP-20220516-144759', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M192', 'search-EXP-20220512-140217-3', 'eval-EXP-20220516-195441', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M193', 'search-EXP-20220512-140232-3', 'eval-EXP-20220518-010215', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M194', 'search-EXP-20220512-140231-3', 'eval-EXP-20220518-050621', CLossV.D_LOSS_V5,
+                    HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M195', 'search-EXP-20220512-231529-0', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M196', 'search-EXP-20220512-231531-0', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M197', 'search-EXP-20220512-231529-1', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M198', 'search-EXP-20220512-231529-2', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M199', 'search-EXP-20220512-231542-2', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M200', 'search-EXP-20220512-231529-3', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M201', 'search-EXP-20220512-231543-3', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M202', 'search-EXP-20220513-085517-2', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M203', 'search-EXP-20220513-085518-0', 'eval-EXP-20220519-190734', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M204', 'search-EXP-20220513-085530-1', 'eval-EXP-20220519-191017', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M205', 'search-EXP-20220513-085531-0', 'eval-EXP-20220520-020219', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M206', 'search-EXP-20220513-103031-1', 'eval-EXP-20220520-072610', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M207', 'search-EXP-20220513-103031-2', 'eval-EXP-20220520-212840', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M208', 'search-EXP-20220513-103046-1', 'eval-EXP-20220521-032432', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M209', 'search-EXP-20220513-174659-1', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M210', 'search-EXP-20220513-174700-0', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M211', 'search-EXP-20220513-174715-1', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M212', 'search-EXP-20220513-174716-0', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M213', 'search-EXP-20220515-234914-0', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M214', 'search-EXP-20220515-234915-1', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M215', 'search-EXP-20220515-234930-0', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M216', 'search-EXP-20220515-234931-1', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M217', 'search-EXP-20220515-234930-2', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M218', 'search-EXP-20220515-234914-2', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M219', 'search-EXP-20220513-174700-2', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M220', 'search-EXP-20220513-103047-2', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M221', 'search-EXP-20220513-174716-2', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M222', 'search-EXP-20220513-103046-3', 'eval-EXP-20220521-131308', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M223', 'search-EXP-20220513-085531-3', 'eval-EXP-20220520-122415', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M224', 'search-EXP-20220515-234910-3', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M225', 'search-EXP-20220513-174654-3', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M226', 'search-EXP-20220517-214827-0', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M227', 'search-EXP-20220517-214816-0', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M228', 'search-EXP-20220517-214828-0', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M229', 'search-EXP-20220517-214818-1', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M230', 'search-EXP-20220517-214817-1', 'eval-EXP-20220521-173250', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M231', 'search-EXP-20220517-214832-1', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M232', 'search-EXP-20220517-214833-1', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M233', 'search-EXP-20220517-214816-2', 'eval-EXP-20220520-030757', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M234', 'search-EXP-20220517-214817-2', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M235', 'search-EXP-20220517-214832-2', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M236', 'search-EXP-20220517-214830-2', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M237', 'search-EXP-20220517-214816-3', 'eval-EXP-20220520-172227', CLossV.D_LOSS_V5, HPCCluster.SDUMONT, HPCCluster.CENAPAD)
+    arch_c.add_arch('M238', 'search-EXP-20220517-214830-3', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M239', 'search-EXP-20220517-214829-3', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+    arch_c.add_arch('M240', 'search-EXP-20220518-122508-0', '', CLossV.D_LOSS_V5, HPCCluster.SDUMONT)
+
     arch_c.save()
 
 

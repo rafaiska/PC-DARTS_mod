@@ -1,22 +1,34 @@
 import gc
 import os
 
-import thop
 import torch
+import thop
 
 import genotypes
 from model import NetworkCIFAR
 from op_oracle import FPOpCounter
 from scripts.arch_data import ArchDataCollection
 
-MIN_FREE_MEM_THRESHOLD = 2000000  # So that the computer doesn't freeze due to swap memory usage
+MIN_FREE_MEM_THRESHOLD = 6000000  # So that the computer doesn't freeze due to swap memory usage
+
+
+class InsufficientSysMem(RuntimeError):
+    pass
 
 
 def profile_arch(network):
-    with torch.autograd.profiler.profile(use_cuda=True) as prof:
-        for _ in range(100):
-            network(torch.randn(1, 3, 32, 32).cuda())
-    return prof.total_average().cpu_time_total, prof.total_average().cuda_time_total
+    cpu_times = []
+    cuda_times = []
+    for i in range(5):
+        with torch.autograd.profiler.profile(use_cuda=True) as prof:
+            for _ in range(20):
+                network(torch.randn(1, 3, 32, 32).cuda())
+        cpu_times.append(prof.total_average().cpu_time_total)
+        cuda_times.append(prof.total_average().cuda_time_total)
+        del prof
+        print('\t\t{}%'.format((i + 1) * 20))
+        check_free_sys_memory()
+    return sum(cpu_times), sum(cuda_times)
 
 
 def get_macs(network):
@@ -29,6 +41,11 @@ def get_fpops(arch_id):
     counter.setup(32, 32, 20, 36)
     counter.genotype = eval('genotypes.{}'.format(arch_id))
     return counter.count_network_fp_ops()
+
+
+def check_free_sys_memory():
+    if get_free_sys_memory() <= MIN_FREE_MEM_THRESHOLD:
+        raise InsufficientSysMem
 
 
 def get_free_sys_memory():
@@ -72,12 +89,11 @@ def assess_and_set_fp_op(arch):
 
 def main():
     assert type(genotypes.M1) == genotypes.Genotype
+    assert torch.cuda.is_available()
     collection = ArchDataCollection()
     collection.load()
     for arch in collection.archs.values():
-        if get_free_sys_memory() <= MIN_FREE_MEM_THRESHOLD:
-            print('Stopping due to insufficient system memory')
-            break
+        check_free_sys_memory()
         print('Checking arch {}...'.format(arch.arch_id))
         collection_modified = assess_and_set_macs(arch)
         collection_modified = assess_and_set_inf_time(arch) or collection_modified

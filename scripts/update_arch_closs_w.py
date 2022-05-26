@@ -36,7 +36,7 @@ def update_arch_closs_w():
     for a_id in archs:
         if not archs[a_id].closs_w:
             archs[a_id].closs_w = extract_from_train_search(archs[a_id].train_search_id)
-        print(a_id, archs[a_id].closs_w)
+        print(a_id, archs[a_id].closs_v, archs[a_id].closs_w)
     arch_c.save()
     w_instance_qt = {}
     for a in arch_c.archs.values():

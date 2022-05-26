@@ -1,10 +1,11 @@
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import curve_fit
 
 from scripts.arch_data import ArchDataCollection, CLossV
 
-FIGSIZE = (12, 5)
+FIGSIZE = (10, 5)
 FIGSIZE_SQUARE = (5, 5)
 
 
@@ -17,49 +18,54 @@ def is_in_pareto_f(a1, plot_data):
     return True
 
 
-def add_extremities(frontier_elements):
+def add_extremities(frontier_elements, acc_lim):
     class DummyArch:
         def __init__(self, model_acc, macs_count):
             self.model_acc = model_acc
             self.macs_count = macs_count
 
-    first = DummyArch(89.8, frontier_elements[0].macs_count)
+    first = DummyArch(acc_lim[0] if acc_lim else 89.9, frontier_elements[0].macs_count)
     last = DummyArch(frontier_elements[-1].model_acc, 8e8)
     frontier_elements.insert(0, first)
     frontier_elements.append(last)
 
 
-def draw_pareto_frontier(plot_data, ax, color):
+def draw_pareto_frontier(plot_data, ax, color, acc_lim=None):
     frontier_elements = []
     for a in plot_data:
         if is_in_pareto_f(a, plot_data):
             frontier_elements.append(a)
     frontier_elements = sorted(frontier_elements, key=lambda arch: arch.macs_count)
-    add_extremities(frontier_elements)
+    add_extremities(frontier_elements, acc_lim)
     ax.plot(
         [a.model_acc for a in frontier_elements], [a.macs_count for a in frontier_elements],
         linestyle='dashed', color=color)
 
 
-def plot_acc_vs_macs(collection):
-    fig = plt.figure(figsize=FIGSIZE)
+def plot_acc_vs_macs(collection, filename, acc_lim=None, figsize=FIGSIZE):
+    fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111)
     plt.xlabel('Model Accuracy (from train.py)')
     plt.ylabel('# MACS')
-    for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V4, CLossV.D_LOSS_V5),
-                              'Original': (CLossV.ORIGINAL,)}.items():
+    for g_name, clv_group in {'MOPC-DARTS': (CLossV.D_LOSS_V5, ),
+                              'PC-DARTS': (CLossV.ORIGINAL,)}.items():
         plot_data = list(collection.select(clv_group).values())
-        ax.scatter([a.model_acc for a in plot_data], [a.macs_count for a in plot_data],
-                   c=[a.closs_w for a in plot_data] if g_name == 'Diff. Loss' else None, cmap='Reds', label=g_name)
-        draw_pareto_frontier(plot_data, ax, 'blue' if g_name == 'Original' else 'red')
+        if acc_lim and g_name == 'MOPC-DARTS':
+            plot_data = list(filter(lambda a: acc_lim[0] <= a.model_acc <= acc_lim[1], plot_data))
+        sct = ax.scatter([a.model_acc for a in plot_data], [a.macs_count for a in plot_data],
+                         c=[a.closs_w for a in plot_data] if g_name == 'MOPC-DARTS' else None, cmap='Reds',
+                         label=g_name, norm=matplotlib.colors.LogNorm())
+        draw_pareto_frontier(plot_data, ax, 'blue' if g_name == 'PC-DARTS' else 'red', acc_lim)
         for a in plot_data:
             x = a.model_acc
             y = a.macs_count
             s = a.arch_id
             # s += ', w={}'.format(a.closs_w) if hasattr(a, "closs_w") and a.closs_w else ''
             plt.text(x=x, y=y, s=s, fontsize=3)
+        if g_name == 'MOPC-DARTS':
+            fig.colorbar(sct, label="$w$ value", orientation="horizontal", cmap='Reds')
     ax.legend()
-    plt.savefig('pareto.pdf', bbox_inches='tight')
+    plt.savefig(filename, bbox_inches='tight')
 
 
 def plot_acc_vs_macs_wo_pareto(collection):
@@ -72,15 +78,13 @@ def plot_acc_vs_macs_wo_pareto(collection):
     ax = fig.add_subplot(111)
     plt.xlabel('Normalized Model Accuracy (from train.py)')
     plt.ylabel('Normalized # MACS')
-    for g_name, clv_group in {'Loss-v4': (CLossV.D_LOSS_V4, CLossV.D_LOSS_V5)}.items():
+    for g_name, clv_group in {'MOPC-DARTS': (CLossV.D_LOSS_V5, )}.items():
         plot_data = list(collection.select(clv_group).values())
         x = _normalize([a.model_acc for a in plot_data])
         y = _normalize([a.macs_count for a in plot_data])
         names = [a.arch_id for a in plot_data]
         normalized_collection = zip(x, y, names)
-        ax.scatter(x, y,
-                   c=[a.closs_w for a in plot_data] if g_name != 'Original' else None,
-                   cmap='Reds' if g_name == 'Loss-v3' else 'Greens', label=g_name)
+        ax.scatter(x, y, c=[a.closs_w for a in plot_data], cmap='Reds', label=g_name)
         plot_exp_regression(x, y, ax)
         acc_range = (max([a.model_acc for a in plot_data]), min([a.model_acc for a in plot_data]))
         print('ACC Range:', acc_range)
@@ -95,9 +99,9 @@ def plot_acc_vs_macs_wo_pareto(collection):
 def plot_acc_vs_w(collection, ax):
     ax.set_xlabel('Custom Loss Weight \"w\"')
     ax.set_ylabel('Model Accuracy (from train.py)')
-    for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V4, CLossV.D_LOSS_V5)}.items():
+    for g_name, clv_group in {'MOPC-DARTS': (CLossV.D_LOSS_V5,)}.items():
         plot_data = list(collection.select(clv_group).values())
-        ax.scatter([a.closs_w for a in plot_data], [a.model_acc for a in plot_data], label=g_name)
+        ax.scatter([a.closs_w for a in plot_data], [a.model_acc for a in plot_data], label=g_name, color='red')
         for a in plot_data:
             x = a.closs_w
             y = a.model_acc
@@ -108,9 +112,9 @@ def plot_acc_vs_w(collection, ax):
 def plot_macs_vs_w(collection, ax):
     ax.set_xlabel('Custom Loss Weight \"w\"')
     ax.set_ylabel('# MACS')
-    for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V4, CLossV.D_LOSS_V5)}.items():
+    for g_name, clv_group in {'MOPC-DARTS': (CLossV.D_LOSS_V5,)}.items():
         plot_data = list(collection.select(clv_group).values())
-        ax.scatter([a.closs_w for a in plot_data], [a.macs_count for a in plot_data], label=g_name)
+        ax.scatter([a.closs_w for a in plot_data], [a.macs_count for a in plot_data], label=g_name, color='red')
         for a in plot_data:
             x = a.closs_w
             y = a.macs_count
@@ -146,23 +150,23 @@ def plot_curve(fit, fit_type, ax, x_range, color='red', y_range=None):
 
 
 def plot_lin_regression(collection, ax):
-    for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V4, CLossV.D_LOSS_V5)}.items():
+    for g_name, clv_group in {'MOPC-DARTS': (CLossV.D_LOSS_V5,)}.items():
         plot_data = list(collection.select(clv_group).values())
         x = [a.closs_w for a in plot_data]
         y = [a.model_acc for a in plot_data]
         fit = np.polyfit(x, y, 1)
         print('Lin fit: {} + {} * x'.format(fit[1], fit[0]))
-        plot_curve(fit, 'linear', ax, (min(x), max(x)))
+        plot_curve(fit, 'linear', ax, (min(x), max(x)), color='black')
 
 
 def plot_log_regression(collection, ax):
-    for g_name, clv_group in {'Diff. Loss': (CLossV.D_LOSS_V4, CLossV.D_LOSS_V5)}.items():
+    for g_name, clv_group in {'MOPC-DARTS': (CLossV.D_LOSS_V5,)}.items():
         plot_data = list(collection.select(clv_group, closs_w_ht0=True).values())
         x = [a.closs_w for a in plot_data]
         y = [a.macs_count for a in plot_data]
         fit = np.polyfit(np.log(x), y, 1)
         print('Log fit: {} + {} * log(x)'.format(fit[1], fit[0]))
-        plot_curve(fit, 'log', ax, (min(x), max(x)))
+        plot_curve(fit, 'log', ax, (min(x), max(x)), color='black')
 
 
 def plot_exp_regression(x, y, ax):
@@ -183,7 +187,7 @@ def plot_exp_regression(x, y, ax):
     print('Exp. fit y = ae^(-b*x) + c: ', popt)
     print(pcov)
     curve_x = np.linspace(0.0, 1.0, 100)
-    ax.plot(curve_x, [_exp_func(i, *popt) for i in curve_x], color='red')
+    ax.plot(curve_x, [_exp_func(i, *popt) for i in curve_x], color='black')
     plot_curve(_get_tan_fit(popt), 'linear', ax, (0.0, 0.84), color='blue', y_range=(0.0, 1.0))
 
 
@@ -200,6 +204,7 @@ def plot_data_vs_w():
 if __name__ == '__main__':
     arch_collection = ArchDataCollection()
     arch_collection.load()
-    plot_acc_vs_macs(arch_collection)
+    plot_acc_vs_macs(arch_collection, 'pareto.pdf')
+    plot_acc_vs_macs(arch_collection, 'pareto_zoom.pdf', (96.5, 97.5), FIGSIZE_SQUARE)
     plot_acc_vs_macs_wo_pareto(arch_collection)
     plot_data_vs_w()

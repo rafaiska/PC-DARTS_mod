@@ -3,20 +3,21 @@ import numpy as np
 from matplotlib.lines import Line2D
 from scripts.arch_data import ArchDataCollection, CLossV
 
-VERSION_TO_COLORS = {CLossV.ORIGINAL: 'red',
+VERSION_TO_COLORS = {CLossV.ORIGINAL: 'blue',
                      CLossV.BOGUS_ORIGINAL: 'orange',
                      CLossV.LEGACY: 'yellow',
-                     CLossV.D_LOSS_V1: 'green',
+                     CLossV.D_LOSS_V1: 'purple',
                      CLossV.D_LOSS_V2: 'cyan',
-                     CLossV.D_LOSS_V3: 'blue',
-                     CLossV.D_LOSS_V4: 'purple',
-                     CLossV.D_LOSS_V5: 'black'}
+                     CLossV.D_LOSS_V3: 'green',
+                     CLossV.D_LOSS_V4: 'red',
+                     CLossV.D_LOSS_V5: 'red'}
 
 
 def plot_arch_macs(plot_data):
     fig = plt.figure(figsize=(24, 8))
     ax = fig.add_subplot(111)
     archs = plot_data.archs.values()
+    archs = list(filter(lambda a: a.macs_count is not None, archs))
     x = [a.arch_id for a in archs]
     y = [a.macs_count for a in archs]
     colors = [VERSION_TO_COLORS[a.closs_v] for a in archs]
@@ -34,7 +35,7 @@ def plot_original_exp_macs_avg(collection, ax):
     average_macs = np.average([a.macs_count for a in collection.archs.values() if a.closs_v == CLossV.ORIGINAL])
     x = np.linspace(ax.get_xlim()[0], ax.get_xlim()[1], 100)
     y = [average_macs for _ in range(len(x))]
-    ax.plot(x, y, linestyle='dashed', color='red', linewidth=4)
+    ax.plot(x, y, linestyle='dashed', color=VERSION_TO_COLORS[CLossV.ORIGINAL], linewidth=4)
 
 
 def convert_repeated_w_to_macs_mean(x, y):
@@ -67,6 +68,7 @@ def plot_macs_comparison_closs_original(collection):
     fig = plt.figure(figsize=(16, 6))
     ax = fig.add_subplot(111)
     archs = collection.archs.values()
+    archs = list(filter(lambda a: a.macs_count is not None, archs))
     closs_archs = sorted([a for a in archs if a.closs_v in [CLossV.D_LOSS_V4, CLossV.D_LOSS_V5]],
                          key=lambda a: a.closs_w)
     x = [a.closs_w for a in closs_archs]
@@ -84,11 +86,32 @@ def plot_macs_comparison_closs_original(collection):
     plt.savefig('arch_macs_vs_average.pdf', bbox_inches='tight')
 
 
+def plot_macs_comparison_closs_v3_v4_original(collection):
+    fig = plt.figure(figsize=(16, 6))
+    ax = fig.add_subplot(111)
+    archs = list(filter(lambda a: a.closs_v in (CLossV.D_LOSS_V3, CLossV.D_LOSS_V4), collection.archs.values()))
+    archs = list(filter(lambda a: a.closs_w <= 2e-8, archs))
+    archs = sorted(archs, key=lambda a: a.closs_w)
+    colors = [VERSION_TO_COLORS[a.closs_v] for a in archs]
+    x = ['{}\n{}'.format(a.arch_id, a.closs_w) for a in archs]
+    y = [a.macs_count for a in archs]
+    plt.xlabel('Custom Loss Weight $w$')
+    plt.ylabel('Average $N_{MACS}$ using thop')
+    ax.bar(x, y, color=colors, label=[a.closs_v for a in archs])
+    fig.tight_layout()
+    plot_original_exp_macs_avg(collection, ax)
+    custom_lines = [Line2D([0], [0], color=c, lw=5) for c in [VERSION_TO_COLORS[CLossV.D_LOSS_V3],
+                                                              VERSION_TO_COLORS[CLossV.D_LOSS_V4]]]
+    ax.legend(custom_lines, [k.name for k in [CLossV.D_LOSS_V3, CLossV.D_LOSS_V4]])
+    plt.savefig('arch_macs_vs_average_v3v4.pdf')
+
+
 def main():
     arch_collection = ArchDataCollection()
     arch_collection.load()
     plot_arch_macs(arch_collection)
     plot_macs_comparison_closs_original(arch_collection)
+    plot_macs_comparison_closs_v3_v4_original(arch_collection)
 
 
 if __name__ == '__main__':
