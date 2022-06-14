@@ -11,10 +11,14 @@ VERSION_TO_COLORS = {CLossV.ORIGINAL: 'blue',
                      CLossV.D_LOSS_V3: 'green',
                      CLossV.D_LOSS_V4: 'red',
                      CLossV.D_LOSS_V5: 'red'}
+TEXT_WIDTH = 6.32283486112
+FIGSIZE = (TEXT_WIDTH, TEXT_WIDTH / 2.0)
+FIGSIZE_WIDE = (TEXT_WIDTH * 4, TEXT_WIDTH)
+LEGEND_FONT_SIZE = 9
 
 
 def plot_arch_macs(plot_data):
-    fig = plt.figure(figsize=(24, 8))
+    fig = plt.figure(figsize=FIGSIZE_WIDE)
     ax = fig.add_subplot(111)
     archs = plot_data.archs.values()
     archs = list(filter(lambda a: a.macs_count is not None, archs))
@@ -65,7 +69,7 @@ def convert_repeated_w_to_macs_mean(x, y):
 
 
 def plot_macs_comparison_closs_original(collection):
-    fig = plt.figure(figsize=(16, 6))
+    fig = plt.figure(figsize=FIGSIZE)
     ax = fig.add_subplot(111)
     archs = collection.archs.values()
     archs = list(filter(lambda a: a.macs_count is not None, archs))
@@ -76,18 +80,19 @@ def plot_macs_comparison_closs_original(collection):
     x, y = convert_repeated_w_to_macs_mean(x, y)
     # plt.xscale('log')
     # plt.yscale('log')
-    plt.xlabel('Custom Loss Weight $w$')
-    plt.ylabel('Average $N_{MACS}$ using thop')
+    plt.xlabel('Peso $w$ do Componente Customizado')
+    plt.ylabel('Média de $N_{MACS}$')
     print(x)
     print(y)
     ax.bar([str(x_) for x_ in x], y)
+    plt.setp(ax.get_xticklabels(), fontsize=4)
     fig.tight_layout()
     plot_original_exp_macs_avg(collection, ax)
     plt.savefig('arch_macs_vs_average.pdf', bbox_inches='tight')
 
 
 def plot_macs_comparison_closs_v3_v4_original(collection):
-    fig = plt.figure(figsize=(16, 6))
+    fig = plt.figure(figsize=FIGSIZE)
     ax = fig.add_subplot(111)
     archs = list(filter(lambda a: a.closs_v in (CLossV.D_LOSS_V3, CLossV.D_LOSS_V4), collection.archs.values()))
     archs = list(filter(lambda a: a.closs_w <= 2e-8, archs))
@@ -95,9 +100,10 @@ def plot_macs_comparison_closs_v3_v4_original(collection):
     colors = [VERSION_TO_COLORS[a.closs_v] for a in archs]
     x = ['{}\n{}'.format(a.arch_id, a.closs_w) for a in archs]
     y = [a.macs_count for a in archs]
-    plt.xlabel('Custom Loss Weight $w$')
-    plt.ylabel('Average $N_{MACS}$ using thop')
+    plt.xlabel('Peso $w$ do Componente Customizado')
+    plt.ylabel('Média de $N_{MACS}$')
     ax.bar(x, y, color=colors, label=[a.closs_v for a in archs])
+    plt.setp(ax.get_xticklabels(), fontsize=4)
     fig.tight_layout()
     plot_original_exp_macs_avg(collection, ax)
     custom_lines = [Line2D([0], [0], color=c, lw=5) for c in [VERSION_TO_COLORS[CLossV.D_LOSS_V3],
@@ -109,6 +115,7 @@ def plot_macs_comparison_closs_v3_v4_original(collection):
 def main():
     arch_collection = ArchDataCollection()
     arch_collection.load()
+    plt.rcParams.update({'font.family': 'DejaVu Serif', 'font.size': LEGEND_FONT_SIZE})
     plot_arch_macs(arch_collection)
     plot_macs_comparison_closs_original(arch_collection)
     plot_macs_comparison_closs_v3_v4_original(arch_collection)

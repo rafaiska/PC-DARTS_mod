@@ -8,10 +8,13 @@ import matplotlib.pyplot as plt
 from scripts.arch_data import ArchDataCollection
 
 EXP_DIR = '/home/rafael/Projetos/msc-rafael-cortez-sanchez/labbook/results'
+TEXT_WIDTH = 6.32283486112
+FIGSIZE = (TEXT_WIDTH, TEXT_WIDTH)
+LEGEND_FONT_SIZE = 9
 
 
 def configure_plot(a_data, b_data, titles):
-    fig = plt.figure(figsize=(16, 8))
+    fig = plt.figure(figsize=FIGSIZE)
     # Creating subplot/axes
     a_ax = fig.add_subplot(211)
     b_ax = fig.add_subplot(212)
@@ -28,10 +31,10 @@ def configure_plot(a_data, b_data, titles):
     b_ax.autoscale()
 
     # Setting X-axis and Y-axis labels
-    a_ax.set_ylabel('Loss value')
-    a_ax.set_xlabel('Training step')
-    b_ax.set_ylabel('Loss value')
-    b_ax.set_xlabel('Training step')
+    a_ax.set_ylabel('Valor de Loss')
+    a_ax.set_xlabel('Passo do Treinamento')
+    b_ax.set_ylabel('Valor de Loss')
+    b_ax.set_xlabel('Passo do Treinamento')
 
     # Plot
     ce_loss_a, custom_loss_a = a_data
@@ -79,7 +82,8 @@ def build_from_exp_data(exp_path):
 def main():
     collection = ArchDataCollection()
     collection.load()
-    arch_ids = sys.argv[1:]
+    plt.rcParams.update({'font.family': 'DejaVu Serif', 'font.size': LEGEND_FONT_SIZE})
+    arch_ids = ['M35', 'M37']
     if len(arch_ids) % 2 != 0:
         raise ValueError('Number of archs must be even')
     for a_id in arch_ids:
@@ -92,8 +96,8 @@ def main():
         b_dir = extract_experiment_data_to_tmp(ts_id_b)
         a_data = build_from_exp_data(a_dir)
         b_data = build_from_exp_data(b_dir)
-        titles = ['Customized Loss Function Components: {}'.format(t) for t in (
-            'Non-Differentiable', 'Differentiable')]
+        titles = ['Componentes da Função Loss Customizada: {}'.format(t) for t in (
+            'Não Diferenciável', 'Diferenciável')]
         configure_plot(a_data, b_data, titles)
         plt.savefig('{}{}-training-loss.pdf'.format(*arch_ids[i:i + 2]), bbox_inches='tight')
 

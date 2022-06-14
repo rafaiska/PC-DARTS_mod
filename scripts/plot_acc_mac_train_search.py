@@ -7,9 +7,12 @@ import matplotlib.pyplot as plt
 from scripts.arch_data import ArchDataCollection, CLossV
 
 EXP_DIR = '/home/rafael/Projetos/msc-rafael-cortez-sanchez/labbook/results'
-FIGSIZE = (12, 5)
-VERSION_NAMES = {CLossV.D_LOSS_V1: 'Version 1', CLossV.D_LOSS_V2: 'Version 2', CLossV.D_LOSS_V3: 'Version 3',
-                 CLossV.D_LOSS_V4: 'Version 4'}
+TEXT_WIDTH = 6.32283486112
+FIGSIZE = (TEXT_WIDTH, TEXT_WIDTH / 2.0)
+FIGSIZE_SQUARE = (TEXT_WIDTH, TEXT_WIDTH)
+LEGEND_FONT_SIZE = 9
+VERSION_NAMES = {CLossV.D_LOSS_V1: 'Loss-v1', CLossV.D_LOSS_V2: 'Loss-v2', CLossV.D_LOSS_V3: 'Loss-v3',
+                 CLossV.D_LOSS_V5: 'Loss-v4'}
 
 
 def configure_plot(accs, macs, title):
@@ -28,9 +31,9 @@ def configure_plot(accs, macs, title):
     macs_ax.autoscale()
 
     # Setting X-axis and Y-axis labels
-    acc_ax.set_ylabel('Top1 Acc')
+    acc_ax.set_ylabel('Acurácia Top1')
     macs_ax.set_ylabel('# MACS')
-    acc_ax.set_xlabel('Training time')
+    acc_ax.set_xlabel('Tempo de Treinamento')
 
     acc_ax.plot([x for x in range(len(accs))], accs, label='Acc', color='blue')
     macs_ax.plot([x for x in range(len(macs))], macs, label='# MACS', color='red')
@@ -105,8 +108,10 @@ def build_from_exp_data(exp_path):
 def main():
     arch_collection = ArchDataCollection()
     arch_collection.load()
+    plt.rcParams.update({'font.family': 'DejaVu Serif', 'font.size': LEGEND_FONT_SIZE})
     # for arch_id, arch in {'M71': arch_collection.archs['M71']}.items():
-    for arch_id, arch in arch_collection.archs.items():
+    for arch_id in ['M39', 'M44', 'M49']:
+        arch = arch_collection.archs[arch_id]
         if arch.closs_v not in VERSION_NAMES:
             continue
         exp_id = arch.train_search_id
@@ -117,8 +122,9 @@ def main():
             print('Arch from {} ({}, {}) not plottable'.format(exp_id, arch.arch_id, arch.closs_v))
             print('Error: {}'.format(e))
             continue
-        fig = configure_plot(accs, macs, 'Training data for {} ({})'.format(arch.arch_id, VERSION_NAMES[arch.closs_v]))
-        plt.savefig('{}({})-training-data.png'.format(arch.arch_id, arch.closs_v))
+        fig = configure_plot(accs, macs,
+                             'Dados de Treinamento para {} ({})'.format(arch.arch_id, VERSION_NAMES[arch.closs_v]))
+        plt.savefig('{}({})-training-data.pdf'.format(arch.arch_id, arch.closs_v), bbox_inches='tight')
         plt.close(fig)
 
 

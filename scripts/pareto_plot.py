@@ -5,8 +5,12 @@ from scipy.optimize import curve_fit
 
 from scripts.arch_data import ArchDataCollection, CLossV
 
-FIGSIZE = (10, 5)
-FIGSIZE_SQUARE = (5, 5)
+TEXT_WIDTH = 6.32283486112
+FIGSIZE = (TEXT_WIDTH, TEXT_WIDTH / 2.0)
+FIGSIZE_SQUARE = (TEXT_WIDTH, TEXT_WIDTH)
+DOT_SIZE = 8
+LEGEND_FONT_SIZE = 9
+DOT_FONT_SIZE = 3
 
 
 def is_in_pareto_f(a1, plot_data):
@@ -45,25 +49,25 @@ def draw_pareto_frontier(plot_data, ax, color, acc_lim=None):
 def plot_acc_vs_macs(collection, filename, acc_lim=None, figsize=FIGSIZE):
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111)
-    plt.xlabel('Model Accuracy (from train.py)')
+    plt.xlabel('Acurácia')
     plt.ylabel('# MACS')
-    for g_name, clv_group in {'MOPC-DARTS': (CLossV.D_LOSS_V5, ),
+    for g_name, clv_group in {'MOPC-DARTS': (CLossV.D_LOSS_V5,),
                               'PC-DARTS': (CLossV.ORIGINAL,)}.items():
         plot_data = list(collection.select(clv_group).values())
         if acc_lim and g_name == 'MOPC-DARTS':
             plot_data = list(filter(lambda a: acc_lim[0] <= a.model_acc <= acc_lim[1], plot_data))
         sct = ax.scatter([a.model_acc for a in plot_data], [a.macs_count for a in plot_data],
                          c=[a.closs_w for a in plot_data] if g_name == 'MOPC-DARTS' else None, cmap='Reds',
-                         label=g_name, norm=matplotlib.colors.LogNorm())
+                         label=g_name, norm=matplotlib.colors.LogNorm(), s=DOT_SIZE)
         draw_pareto_frontier(plot_data, ax, 'blue' if g_name == 'PC-DARTS' else 'red', acc_lim)
         for a in plot_data:
             x = a.model_acc
             y = a.macs_count
             s = a.arch_id
             # s += ', w={}'.format(a.closs_w) if hasattr(a, "closs_w") and a.closs_w else ''
-            plt.text(x=x, y=y, s=s, fontsize=3)
+            plt.text(x=x, y=y, s=s, fontsize=DOT_FONT_SIZE)
         if g_name == 'MOPC-DARTS':
-            fig.colorbar(sct, label="$w$ value", orientation="horizontal", cmap='Reds')
+            fig.colorbar(sct, label="Valor de $w$", orientation="horizontal", cmap='Reds', pad=0.2)
     ax.legend()
     plt.savefig(filename, bbox_inches='tight')
 
@@ -76,54 +80,59 @@ def plot_acc_vs_macs_wo_pareto(collection):
 
     fig = plt.figure(figsize=FIGSIZE_SQUARE)
     ax = fig.add_subplot(111)
-    plt.xlabel('Normalized Model Accuracy (from train.py)')
-    plt.ylabel('Normalized # MACS')
-    for g_name, clv_group in {'MOPC-DARTS': (CLossV.D_LOSS_V5, )}.items():
+    plt.xlabel('Acurácia Normalizada')
+    plt.ylabel('# MACS Normalizado')
+    acc_rangee = None
+    exp_regressionn = None
+    for g_name, clv_group in {'MOPC-DARTS': (CLossV.D_LOSS_V5,)}.items():
         plot_data = list(collection.select(clv_group).values())
         x = _normalize([a.model_acc for a in plot_data])
         y = _normalize([a.macs_count for a in plot_data])
         names = [a.arch_id for a in plot_data]
         normalized_collection = zip(x, y, names)
-        ax.scatter(x, y, c=[a.closs_w for a in plot_data], cmap='Reds', label=g_name)
-        plot_exp_regression(x, y, ax)
-        acc_range = (max([a.model_acc for a in plot_data]), min([a.model_acc for a in plot_data]))
-        print('ACC Range:', acc_range)
-        print('ACC Delta:', acc_range[0] - acc_range[1])
+        ax.scatter(x, y, c=[a.closs_w for a in plot_data], cmap='Reds', label=g_name, s=DOT_SIZE)
+        exp_regressionn = plot_exp_regression(x, y, ax)
+        acc_rangee = (max([a.model_acc for a in plot_data]), min([a.model_acc for a in plot_data]))
+        print('ACC Range:', acc_rangee)
+        print('ACC Delta:', acc_rangee[0] - acc_rangee[1])
         for arch_data in normalized_collection:
             x, y, arch_id = arch_data
-            plt.text(x=x, y=y, s=arch_id, fontsize=3)
+            plt.text(x=x, y=y, s=arch_id, fontsize=DOT_FONT_SIZE)
     # ax.legend()
     plt.savefig('acc_vs_macs_wo_pareto.pdf', bbox_inches='tight')
+    return exp_regressionn, acc_rangee
 
 
 def plot_acc_vs_w(collection, ax):
-    ax.set_xlabel('Custom Loss Weight \"w\"')
-    ax.set_ylabel('Model Accuracy (from train.py)')
+    ax.set_xlabel('Peso $w$ da Componente Customizada')
+    ax.set_ylabel('Acurácia')
     for g_name, clv_group in {'MOPC-DARTS': (CLossV.D_LOSS_V5,)}.items():
         plot_data = list(collection.select(clv_group).values())
-        ax.scatter([a.closs_w for a in plot_data], [a.model_acc for a in plot_data], label=g_name, color='red')
+        ax.scatter([a.closs_w for a in plot_data], [a.model_acc for a in plot_data], label=g_name, color='red',
+                   s=DOT_SIZE)
         for a in plot_data:
             x = a.closs_w
             y = a.model_acc
             s = a.arch_id
-            ax.text(x=x, y=y, s=s, fontsize=10)
+            ax.text(x=x, y=y, s=s, fontsize=DOT_FONT_SIZE)
 
 
 def plot_macs_vs_w(collection, ax):
-    ax.set_xlabel('Custom Loss Weight \"w\"')
+    ax.set_xlabel('Peso $w$ da Componente Customizada')
     ax.set_ylabel('# MACS')
     for g_name, clv_group in {'MOPC-DARTS': (CLossV.D_LOSS_V5,)}.items():
         plot_data = list(collection.select(clv_group).values())
-        ax.scatter([a.closs_w for a in plot_data], [a.macs_count for a in plot_data], label=g_name, color='red')
+        ax.scatter([a.closs_w for a in plot_data], [a.macs_count for a in plot_data], label=g_name, color='red',
+                   s=DOT_SIZE)
         for a in plot_data:
             x = a.closs_w
             y = a.macs_count
             s = a.arch_id
-            ax.text(x=x, y=y, s=s, fontsize=10)
+            ax.text(x=x, y=y, s=s, fontsize=DOT_FONT_SIZE)
 
 
 def configure_multiplot():
-    fig = plt.figure(figsize=FIGSIZE)
+    fig = plt.figure(figsize=FIGSIZE_SQUARE)
     acc_w_ax = fig.add_subplot(211)
     macs_w_ax = fig.add_subplot(212)
     return fig, acc_w_ax, macs_w_ax
@@ -157,6 +166,7 @@ def plot_lin_regression(collection, ax):
         fit = np.polyfit(x, y, 1)
         print('Lin fit: {} + {} * x'.format(fit[1], fit[0]))
         plot_curve(fit, 'linear', ax, (min(x), max(x)), color='black')
+        return fit
 
 
 def plot_log_regression(collection, ax):
@@ -189,22 +199,49 @@ def plot_exp_regression(x, y, ax):
     curve_x = np.linspace(0.0, 1.0, 100)
     ax.plot(curve_x, [_exp_func(i, *popt) for i in curve_x], color='black')
     plot_curve(_get_tan_fit(popt), 'linear', ax, (0.0, 0.84), color='blue', y_range=(0.0, 1.0))
+    return popt
 
 
 def plot_data_vs_w():
     fig, acc_w_ax, macs_w_ax = configure_multiplot()
     plot_acc_vs_w(arch_collection, acc_w_ax)
-    plot_lin_regression(arch_collection, acc_w_ax)
+    lin_regression = plot_lin_regression(arch_collection, acc_w_ax)
     plot_macs_vs_w(arch_collection, macs_w_ax)
     plot_log_regression(arch_collection, macs_w_ax)
     plt.subplots_adjust(hspace=0.3)
     plt.savefig('data_vs_w.pdf', bbox_inches='tight')
+    return lin_regression
+
+
+def print_ideal_w(exp_regression, acc_range, lin_regression):
+    a, b, c = exp_regression
+    m, n = lin_regression
+    max_acc, min_acc = acc_range
+    print('\ty = a * e^(-b*x) + c')
+    print('\t(-b * a) * e^(-b*x) = 1')
+    print('\te^(-b*x) = 1 / (-b * a)')
+    print('\t-b*x = log(1 / (-b * a))')
+    nacc = np.log(1 / (-b * a)) / -b
+    print('\tx = log(1 / (-b * a)) / -b = {}'.format(nacc))
+    print('\n')
+
+    print('\tacc = min_acc + (max_acc - min_acc) * nacc')
+    acc = min_acc + (max_acc - min_acc) * nacc
+    print('\tacc = {} + ({} - {}) * {} = {}'.format(min_acc, max_acc, min_acc, nacc, acc))
+    print('\n')
+
+    print('\tacc = n + m * w')
+    print('\t(acc - n)/m = w')
+    w = (acc - n) / m
+    print('\t({} - {})/{} = {}'.format(acc, n, m, w))
 
 
 if __name__ == '__main__':
     arch_collection = ArchDataCollection()
     arch_collection.load()
+    plt.rcParams.update({'font.family': 'DejaVu Serif', 'font.size': LEGEND_FONT_SIZE})
     plot_acc_vs_macs(arch_collection, 'pareto.pdf')
     plot_acc_vs_macs(arch_collection, 'pareto_zoom.pdf', (96.5, 97.5), FIGSIZE_SQUARE)
-    plot_acc_vs_macs_wo_pareto(arch_collection)
-    plot_data_vs_w()
+    exp_regression, acc_range = plot_acc_vs_macs_wo_pareto(arch_collection)
+    lin_regression = plot_data_vs_w()
+    print_ideal_w(exp_regression, acc_range, lin_regression)
