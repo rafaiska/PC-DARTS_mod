@@ -13,13 +13,19 @@ LEGEND_FONT_SIZE = 9
 DOT_FONT_SIZE = 3
 
 
-def is_in_pareto_f(a1, plot_data):
+def is_on_pareto_f(a1, plot_data):
     for a2 in plot_data:
         if a1 is a2:
             continue
         if a2.model_acc > a1.model_acc and a2.macs_count < a1.macs_count:
             return False
     return True
+
+
+def is_inside_pareto_f(a1, frontier_elements):
+    frontier_copy = frontier_elements.copy()
+    frontier_copy.append(a1)
+    return not is_on_pareto_f(a1, frontier_copy)
 
 
 def add_extremities(frontier_elements, acc_lim):
@@ -37,13 +43,14 @@ def add_extremities(frontier_elements, acc_lim):
 def draw_pareto_frontier(plot_data, ax, color, acc_lim=None):
     frontier_elements = []
     for a in plot_data:
-        if is_in_pareto_f(a, plot_data):
+        if is_on_pareto_f(a, plot_data):
             frontier_elements.append(a)
-    frontier_elements = sorted(frontier_elements, key=lambda arch: arch.macs_count)
-    add_extremities(frontier_elements, acc_lim)
+    frontier_elements_mod = sorted(frontier_elements, key=lambda arch: arch.macs_count)
+    add_extremities(frontier_elements_mod, acc_lim)
     ax.plot(
-        [a.model_acc for a in frontier_elements], [a.macs_count for a in frontier_elements],
+        [a.model_acc for a in frontier_elements_mod], [a.macs_count for a in frontier_elements_mod],
         linestyle='dashed', color=color)
+    return frontier_elements
 
 
 def plot_acc_vs_macs(collection, filename, acc_lim=None, figsize=FIGSIZE):
@@ -51,6 +58,7 @@ def plot_acc_vs_macs(collection, filename, acc_lim=None, figsize=FIGSIZE):
     ax = fig.add_subplot(111)
     plt.xlabel('Acurácia')
     plt.ylabel('# MACS')
+    frontiers = {}
     for g_name, clv_group in {'MOPC-DARTS': (CLossV.D_LOSS_V5,),
                               'PC-DARTS': (CLossV.ORIGINAL,)}.items():
         plot_data = list(collection.select(clv_group).values())
@@ -59,7 +67,7 @@ def plot_acc_vs_macs(collection, filename, acc_lim=None, figsize=FIGSIZE):
         sct = ax.scatter([a.model_acc for a in plot_data], [a.macs_count for a in plot_data],
                          c=[a.closs_w for a in plot_data] if g_name == 'MOPC-DARTS' else None, cmap='Reds',
                          label=g_name, norm=matplotlib.colors.LogNorm(), s=DOT_SIZE)
-        draw_pareto_frontier(plot_data, ax, 'blue' if g_name == 'PC-DARTS' else 'red', acc_lim)
+        frontiers[g_name] = draw_pareto_frontier(plot_data, ax, 'blue' if g_name == 'PC-DARTS' else 'red', acc_lim)
         for a in plot_data:
             x = a.model_acc
             y = a.macs_count
@@ -68,6 +76,7 @@ def plot_acc_vs_macs(collection, filename, acc_lim=None, figsize=FIGSIZE):
             plt.text(x=x, y=y, s=s, fontsize=DOT_FONT_SIZE)
         if g_name == 'MOPC-DARTS':
             fig.colorbar(sct, label="Valor de $w$", orientation="horizontal", cmap='Reds', pad=0.2)
+    evaluate_frontiers(frontiers, collection)
     ax.legend()
     plt.savefig(filename, bbox_inches='tight')
 
@@ -234,6 +243,31 @@ def print_ideal_w(exp_regression, acc_range, lin_regression):
     print('\t(acc - n)/m = w')
     w = (acc - n) / m
     print('\t({} - {})/{} = {}'.format(acc, n, m, w))
+
+
+def evaluate_frontiers(frontiers, collection):
+    pc_darts_archs = list(collection.select((CLossV.ORIGINAL,)).values())
+    mopc_darts_archs = list(collection.select((CLossV.D_LOSS_V5,)).values())
+    all_frontiers_points = frontiers['PC-DARTS'].copy()
+    all_frontiers_points.extend(frontiers['MOPC-DARTS'])
+    global_frontier = set(filter(lambda x: is_on_pareto_f(x, all_frontiers_points), all_frontiers_points))
+    pc_darts_frontier = set(frontiers['PC-DARTS'])
+    mopc_darts_frontier = set(frontiers['MOPC-DARTS'])
+    mopc_darts_archs_inside_pc_darts_frontier = set(filter(
+        lambda x: is_inside_pareto_f(x, frontiers['PC-DARTS']), mopc_darts_archs))
+    pc_darts_archs_inside_mopc_darts_frontier = set(filter(
+        lambda x: is_inside_pareto_f(x, frontiers['MOPC-DARTS']), pc_darts_archs))
+    print('ARCHS IN PC-DARTS FRONTIER:', len(frontiers['PC-DARTS']))
+    print('ARCHS IN MOPC-DARTS FRONTIER:', len(frontiers['MOPC-DARTS']))
+    print('PC-DARTS ARCHS IN GLOBAL FRONTIER:', len(global_frontier.intersection(pc_darts_frontier)))
+    print('MOPC-DARTS ARCHS IN GLOBAL FRONTIER:', len(global_frontier.intersection(mopc_darts_frontier)))
+    print('ALL GLOBAL FRONTIER ELEMENTS:', len(global_frontier))
+    print(len(mopc_darts_archs_inside_pc_darts_frontier), len(mopc_darts_archs))
+    print('MOPC-DARTS ARCHS INSIDE PC-DARTS FRONTIER',
+          len(mopc_darts_archs_inside_pc_darts_frontier) * 100.0 / len(mopc_darts_archs), '%')
+    print(len(pc_darts_archs_inside_mopc_darts_frontier), len(pc_darts_archs))
+    print('PC-DARTS ARCHS INSIDE MOPC-DARTS FRONTIER',
+          len(pc_darts_archs_inside_mopc_darts_frontier) * 100.0 / len(pc_darts_archs), '%')
 
 
 if __name__ == '__main__':

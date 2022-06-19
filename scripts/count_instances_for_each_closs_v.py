@@ -4,7 +4,7 @@ from scripts.arch_data import ArchDataCollection, CLossV
 def count_instances(collection):
     counter = 0
     for version in CLossV:
-        archs = [x for x in filter(lambda y: y.closs_v == version, collection.archs.values())]
+        archs = collection.select((version,))
         counter += len(archs)
         print('{}: {}'.format(version, len(archs)))
     print('Total: {}'.format(counter))
