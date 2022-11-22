@@ -40,6 +40,12 @@ def add_extremities(frontier_elements, acc_lim):
     frontier_elements.append(last)
 
 
+def plot_pareto_stair_from_a_to_b(ax, color, point_a, point_b):
+    x = [point_a.model_acc, point_a.model_acc, point_b.model_acc]
+    y = [point_a.macs_count, point_b.macs_count, point_b.macs_count]
+    ax.plot(x, y, linestyle='dashed', color=color, linewidth=0.8)
+
+
 def draw_pareto_frontier(plot_data, ax, color, acc_lim=None):
     frontier_elements = []
     for a in plot_data:
@@ -47,10 +53,23 @@ def draw_pareto_frontier(plot_data, ax, color, acc_lim=None):
             frontier_elements.append(a)
     frontier_elements_mod = sorted(frontier_elements, key=lambda arch: arch.macs_count)
     add_extremities(frontier_elements_mod, acc_lim)
-    ax.plot(
-        [a.model_acc for a in frontier_elements_mod], [a.macs_count for a in frontier_elements_mod],
-        linestyle='dashed', color=color)
+    for i in range(len(frontier_elements_mod) - 1):
+        plot_pareto_stair_from_a_to_b(ax, color, frontier_elements_mod[i], frontier_elements_mod[i + 1])
+
     return frontier_elements
+
+
+def get_set_of_ranked_pfrontiers(plot_data):
+    sets = []
+    remaining = set(plot_data)
+    while len(remaining) > 0:
+        new_set = set()
+        for a in remaining:
+            if is_on_pareto_f(a, remaining):
+                new_set.add(a)
+        remaining -= new_set
+        sets.append(new_set)
+    print(sets)
 
 
 def plot_acc_vs_macs(collection, filename, acc_lim=None, figsize=FIGSIZE):
@@ -68,12 +87,13 @@ def plot_acc_vs_macs(collection, filename, acc_lim=None, figsize=FIGSIZE):
                          c=[a.closs_w for a in plot_data] if g_name == 'MOPC-DARTS' else None, cmap='Reds',
                          label=g_name, norm=matplotlib.colors.LogNorm(), s=DOT_SIZE)
         frontiers[g_name] = draw_pareto_frontier(plot_data, ax, 'blue' if g_name == 'PC-DARTS' else 'red', acc_lim)
-        for a in plot_data:
-            x = a.model_acc
-            y = a.macs_count
-            s = a.arch_id
-            # s += ', w={}'.format(a.closs_w) if hasattr(a, "closs_w") and a.closs_w else ''
-            plt.text(x=x, y=y, s=s, fontsize=DOT_FONT_SIZE)
+        print("RANKED SETS {}:".format(g_name))
+        get_set_of_ranked_pfrontiers(plot_data)
+        # for a in plot_data:
+        #     x = a.model_acc
+        #     y = a.macs_count
+        #     s = a.arch_id
+        #     plt.text(x=x, y=y, s=s, fontsize=DOT_FONT_SIZE)
         if g_name == 'MOPC-DARTS':
             fig.colorbar(sct, label="Valor de $w$", orientation="horizontal", cmap='Reds', pad=0.2)
     evaluate_frontiers(frontiers, collection)
@@ -104,9 +124,9 @@ def plot_acc_vs_macs_wo_pareto(collection):
         acc_rangee = (max([a.model_acc for a in plot_data]), min([a.model_acc for a in plot_data]))
         print('ACC Range:', acc_rangee)
         print('ACC Delta:', acc_rangee[0] - acc_rangee[1])
-        for arch_data in normalized_collection:
-            x, y, arch_id = arch_data
-            plt.text(x=x, y=y, s=arch_id, fontsize=DOT_FONT_SIZE)
+        # for arch_data in normalized_collection:
+        #     x, y, arch_id = arch_data
+        #     plt.text(x=x, y=y, s=arch_id, fontsize=DOT_FONT_SIZE)
     # ax.legend()
     plt.savefig('acc_vs_macs_wo_pareto.pdf', bbox_inches='tight')
     return exp_regressionn, acc_rangee
@@ -119,11 +139,11 @@ def plot_acc_vs_w(collection, ax):
         plot_data = list(collection.select(clv_group).values())
         ax.scatter([a.closs_w for a in plot_data], [a.model_acc for a in plot_data], label=g_name, color='red',
                    s=DOT_SIZE)
-        for a in plot_data:
-            x = a.closs_w
-            y = a.model_acc
-            s = a.arch_id
-            ax.text(x=x, y=y, s=s, fontsize=DOT_FONT_SIZE)
+        # for a in plot_data:
+        #     x = a.closs_w
+        #     y = a.model_acc
+        #     s = a.arch_id
+        #     ax.text(x=x, y=y, s=s, fontsize=DOT_FONT_SIZE)
 
 
 def plot_macs_vs_w(collection, ax):
@@ -133,11 +153,11 @@ def plot_macs_vs_w(collection, ax):
         plot_data = list(collection.select(clv_group).values())
         ax.scatter([a.closs_w for a in plot_data], [a.macs_count for a in plot_data], label=g_name, color='red',
                    s=DOT_SIZE)
-        for a in plot_data:
-            x = a.closs_w
-            y = a.macs_count
-            s = a.arch_id
-            ax.text(x=x, y=y, s=s, fontsize=DOT_FONT_SIZE)
+        # for a in plot_data:
+        #     x = a.closs_w
+        #     y = a.macs_count
+        #     s = a.arch_id
+        #     ax.text(x=x, y=y, s=s, fontsize=DOT_FONT_SIZE)
 
 
 def configure_multiplot():

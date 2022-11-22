@@ -77,18 +77,50 @@ def plot_macs_comparison_closs_original(collection):
                          key=lambda a: a.closs_w)
     x = [a.closs_w for a in closs_archs]
     y = [a.macs_count for a in closs_archs]
+    max_min_macs_for_each_w = get_min_max_macs_for_each_w(x, y)
     x, y = convert_repeated_w_to_macs_mean(x, y)
+    yerr = calculate_yerr(x, y, max_min_macs_for_each_w)
     # plt.xscale('log')
     # plt.yscale('log')
     plt.xlabel('Peso $w$ do Componente Customizado')
     plt.ylabel('Média de $N_{MACS}$')
     print(x)
     print(y)
-    ax.bar([str(x_) for x_ in x], y)
+    ax.bar(['{:1.1e}'.format(x_) for x_ in x], y, yerr=yerr)
+    # plot_max_min(ax, x, max_min_macs_for_each_w)
     plt.setp(ax.get_xticklabels(), fontsize=4)
     fig.tight_layout()
     plot_original_exp_macs_avg(collection, ax)
     plt.savefig('arch_macs_vs_average.pdf', bbox_inches='tight')
+
+
+def get_min_max_macs_for_each_w(x, y):
+    ret = {}
+    if len(x) != len(y):
+        raise RuntimeError('Deveriam ser iguais')
+    for i in range(len(x)):
+        if x[i] not in ret:
+            ret[x[i]] = [y[i], y[i]]
+        if y[i] < ret[x[i]][0]:
+            ret[x[i]][0] = y[i]
+        if y[i] > ret[x[i]][1]:
+            ret[x[i]][1] = y[i]
+    return ret
+
+
+def calculate_yerr(x, y, max_min_macs_for_each_w):
+    if len(y) != len(max_min_macs_for_each_w):
+        raise ValueError
+
+    min_delta = []
+    max_delta = []
+
+    for i in range(len(y)):
+        min, max = max_min_macs_for_each_w[x[i]]
+        min_delta.append(y[i] - min)
+        max_delta.append(max - y[i])
+
+    return min_delta, max_delta
 
 
 def plot_macs_comparison_closs_v3_v4_original(collection):
@@ -115,7 +147,7 @@ def plot_macs_comparison_closs_v3_v4_original(collection):
 def main():
     arch_collection = ArchDataCollection()
     arch_collection.load()
-    plt.rcParams.update({'font.family': 'DejaVu Serif', 'font.size': LEGEND_FONT_SIZE})
+    plt.rcParams.update({'font.family': 'DejaVu Serif', 'font.size': LEGEND_FONT_SIZE, 'errorbar.capsize': 4})
     plot_arch_macs(arch_collection)
     plot_macs_comparison_closs_original(arch_collection)
     plot_macs_comparison_closs_v3_v4_original(arch_collection)
