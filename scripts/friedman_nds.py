@@ -7,7 +7,7 @@ def calculate_friedman_nds(plot_data):
     avg_ranks = calculate_avg_ranks(ranks_rij, plot_data)
     q_statistics = calculate_q_statistics(avg_ranks, plot_data)
     correction = calculate_correction(frontiers)
-    return q_statistics #/ correction
+    return q_statistics / correction
 
 
 def get_set_of_ranked_pfrontiers(plot_data):

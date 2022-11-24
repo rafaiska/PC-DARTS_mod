@@ -112,6 +112,11 @@ class ArchDataCollection:
             for arch in self.archs.values():
                 fp.write('{}\n'.format(str(arch)))
 
+    def py_dump(self, path):
+        with open(path, 'w') as fp:
+            for arch in self.archs.values():
+                fp.write('self.experiments[\'{}\'] = Experiment({}, {}, {})\n'.format(arch.arch_id, arch.model_acc, arch.macs_count, arch.closs_v))
+
 
 def create_update_arch_collection():
     arch_c = ArchDataCollection()
@@ -521,6 +526,13 @@ def dump_archs_csv():
     arch_c = ArchDataCollection()
     arch_c.load()
     arch_c.csv_dump(csv_path)
+
+
+def dump_google_colab_exp():
+    csv_path = '{}/archs.py'.format(expanduser('~'))
+    arch_c = ArchDataCollection()
+    arch_c.load()
+    arch_c.py_dump(csv_path)
 
 
 def set_train_search_sys():
